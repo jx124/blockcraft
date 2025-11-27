@@ -1,3 +1,3 @@
 target_include_directories(blockcraft PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_subdirectory(foo)
+add_subdirectory(graphics)

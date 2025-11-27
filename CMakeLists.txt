@@ -28,6 +28,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-Wall -Wextra -Weffc++)
 
+# TODO: set compile flags based on compiler
 if(CMAKE_BUILD_TYPE STREQUAL "debug")
     add_compile_definitions(DEBUG=1)
     add_compile_options(-Og -march=native)
@@ -52,8 +53,12 @@ if(MSVC)
     SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup")
 endif()
 
+add_subdirectory(glm)
+
+set(GLM_BUILD_TESTS OFF CACHE BOOL "GLM lib only")
+
 add_executable(blockcraft WIN32 main.cpp ${GLAD_GL})
-target_link_libraries(blockcraft ${OPENGL_LIBRARIES} glfw)
+target_link_libraries(blockcraft ${OPENGL_LIBRARIES} glfw glm::glm)
 
 add_subdirectory(src)
 add_subdirectory(include)
