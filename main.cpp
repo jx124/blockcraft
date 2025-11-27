@@ -2,11 +2,8 @@
 
 #define GLAD_GL_IMPLEMENTATION
 #include "glad/gl.h"
+#include "graphics/common.hpp"
 #include "graphics/window.hpp"
-
-#include "glm/fwd.hpp"
-#include "glm/ext/matrix_clip_space.hpp"
-#include "glm/gtc/type_ptr.hpp"
 
 static const char* vertex_shader_text =
 "#version 330\n"

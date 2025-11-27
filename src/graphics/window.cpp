@@ -1,4 +1,4 @@
-#include "glad/gl.h"
+#include "graphics/common.hpp"
 #include "graphics/window.hpp"
 
 #include <iostream>
