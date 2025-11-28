@@ -1,6 +1,3 @@
-#include "glm/ext/matrix_transform.hpp"
-#include <GL/gl.h>
-#include <GL/glext.h>
 #define GLAD_GL_IMPLEMENTATION
 #include "glad/gl.h"
 
@@ -43,6 +40,7 @@ int main() {
     if (!program) {
         return 1;
     }
+    glUseProgram(*program);
 
     std::optional<ImageData> stone = Texture::read_image("data/assets/glass.png");
     if (!stone) {
@@ -50,9 +48,7 @@ int main() {
     }
 
     Texture stone_texture = Texture(*stone, GL_TEXTURE_2D);
-
-    const GLint mvp_location = glGetUniformLocation(*program, "MVP");
-    const GLint texture_location = glGetUniformLocation(*program, "textureId");
+    Shader::set_uniform(*program, "textureId", (int)stone_texture.get_slot());
 
     while (!glfwWindowShouldClose(window.ptr())) {
         glClear(GL_COLOR_BUFFER_BIT);
@@ -65,9 +61,7 @@ int main() {
         glm::mat4 proj = glm::ortho(-1.0f * aspect, 1.0f * aspect, -1.0f, 1.0f, -100.f, 100.0f);
         glm::mat4 mvp = proj * model;
         
-        glUseProgram(*program);
-        glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
-        glUniform1i(texture_location, stone_texture.get_slot());
+        Shader::set_uniform(*program, "MVP", mvp);
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
