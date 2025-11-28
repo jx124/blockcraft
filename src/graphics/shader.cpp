@@ -5,7 +5,7 @@
 #include <sstream>
 #include <optional>
 
-std::optional<GLuint> Shader::create(const std::string& vertex_path, const std::string& fragment_path) {
+std::optional<GLuint> Shader::create(const std::filesystem::path& vertex_path, const std::filesystem::path& fragment_path) {
     std::optional<std::string> vertex_source = Shader::parse_file(vertex_path);
     std::optional<std::string> fragment_source = Shader::parse_file(fragment_path);
 
@@ -33,7 +33,7 @@ std::optional<GLuint> Shader::create(const std::string& vertex_path, const std::
     }
 }
 
-std::optional<std::string> Shader::parse_file(const std::string& file_path) {
+std::optional<std::string> Shader::parse_file(const std::filesystem::path& file_path) {
     std::ifstream file{ file_path };
 
     if (!file.is_open()) {

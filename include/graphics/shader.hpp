@@ -2,6 +2,7 @@
 
 #include "graphics/common.hpp"
 
+#include <filesystem>
 #include <optional>
 #include <string>
 
@@ -14,10 +15,10 @@ public:
     };
 
     // Not using string_view since OS file reading requires null-terminated strings
-    static std::optional<GLuint> create(const std::string& vertex_path, const std::string& fragment_path);
+    static std::optional<GLuint> create(const std::filesystem::path& vertex_path, const std::filesystem::path& fragment_path);
 
 private:
-    static std::optional<std::string> parse_file(const std::string& file_path);
+    static std::optional<std::string> parse_file(const std::filesystem::path& file_path);
     static std::optional<GLuint> compile(const std::string& source, Shader::Type type);
     static bool link(GLuint program_id, GLuint vertex_shader, GLuint fragment_shader);
 };
