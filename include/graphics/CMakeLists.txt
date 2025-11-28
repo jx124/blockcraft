@@ -1,3 +1,3 @@
 target_include_directories(blockcraft PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_precompile_headers(blockcraft PUBLIC common.hpp)
+target_precompile_headers(blockcraft PUBLIC common.hpp stb_image.h)

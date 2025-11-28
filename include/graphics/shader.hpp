@@ -14,7 +14,6 @@ public:
         Geometry = GL_GEOMETRY_SHADER,
     };
 
-    // Not using string_view since OS file reading requires null-terminated strings
     static std::optional<GLuint> create(const std::filesystem::path& vertex_path, const std::filesystem::path& fragment_path);
 
 private:
