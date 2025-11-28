@@ -6,12 +6,30 @@
 #include "graphics/texture.hpp"
 #include "graphics/window.hpp"
 
+struct RenderCall {
+    glm::mat4 transform;
+    GLuint VAO;
+    GLuint shader_id;
+    GLuint texture_unit;
+    size_t n_vertices;
+};
+
+void render(RenderCall render_call) {
+    glUseProgram(render_call.shader_id);
+    Shader::set_uniform(render_call.shader_id, "textureId", (int)render_call.texture_unit);
+    Shader::set_uniform(render_call.shader_id, "MVP", render_call.transform);
+
+    glBindVertexArray(render_call.VAO);
+    glDrawArrays(GL_TRIANGLES, 0, render_call.n_vertices);
+}
+
 int main() {
     Window window(800, 600, "Hello Window");
 
     glClearColor(0.4f, 0.6f, 0.3f, 0.0f);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_DEPTH_TEST);
 
     GLuint VAO, VBO;
     glGenVertexArrays(1, &VAO);
@@ -40,32 +58,55 @@ int main() {
     if (!program) {
         return 1;
     }
-    glUseProgram(*program);
 
-    std::optional<ImageData> stone = Texture::read_image("data/assets/glass.png");
+    std::optional<ImageData> glass = Texture::read_image("data/assets/glass.png");
+    if (!glass) {
+        return 1;
+    }
+
+    Texture glass_texture = Texture(*glass, GL_TEXTURE_2D);
+
+    std::optional<ImageData> stone = Texture::read_image("data/assets/stone.png");
     if (!stone) {
         return 1;
     }
 
     Texture stone_texture = Texture(*stone, GL_TEXTURE_2D);
-    Shader::set_uniform(*program, "textureId", (int)stone_texture.get_slot());
 
     while (!glfwWindowShouldClose(window.ptr())) {
-        glClear(GL_COLOR_BUFFER_BIT);
-
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
         glm::mat4 model(1.0f);
-        model = glm::rotate(model, (float)glfwGetTime(), {0.0f, 0.0f, 1.0f});
-        model = glm::scale(model, {0.5f, 0.5f, 1.0f});
+        model = glm::translate(model, {0.0f, 0.0f, -1.0f});
 
         constexpr float aspect = 800.0f / 600.0f;
         glm::mat4 proj = glm::ortho(-1.0f * aspect, 1.0f * aspect, -1.0f, 1.0f, -100.f, 100.0f);
         glm::mat4 mvp = proj * model;
+
+        RenderCall call_1 = {
+            mvp,
+            VAO,
+            *program,
+            stone_texture.get_unit(),
+            6
+        };
+
+        model = glm::rotate(model, (float)glfwGetTime(), {0.0f, 0.0f, 1.0f});
+        model = glm::translate(model, {0.0f, 0.0f, 0.5f});
+        model = glm::scale(model, {0.5f, 0.5f, 1.0f});
+        mvp = proj * model;
+
+        RenderCall call_2 = {
+            mvp,
+            VAO,
+            *program,
+            glass_texture.get_unit(),
+            6
+        };
+
+        render(call_1);
+        render(call_2);
         
-        Shader::set_uniform(*program, "MVP", mvp);
-
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
         glfwSwapBuffers(window.ptr());
         glfwPollEvents();
     }

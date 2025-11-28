@@ -23,6 +23,8 @@ std::optional<GLuint> Shader::create(const std::filesystem::path& vertex_path, c
     GLuint program_id = glCreateProgram();
     bool success = Shader::link(program_id, *vertex_shader, *fragment_shader);
 
+    glDetachShader(program_id, *vertex_shader);
+    glDetachShader(program_id, *fragment_shader);
     glDeleteShader(*vertex_shader);
     glDeleteShader(*fragment_shader);
 

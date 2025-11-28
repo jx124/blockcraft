@@ -4,7 +4,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "graphics/stb_image.h"
 
-Texture::Texture(const ImageData& image_data, GLenum target) : slot(n_textures), target(target) {
+Texture::Texture(const ImageData& image_data, GLenum target) : unit(n_textures), target(target) {
     glGenTextures(1, &this->id);
     glActiveTexture(GL_TEXTURE0 + n_textures++);
     glBindTexture(target, this->id);
@@ -40,6 +40,6 @@ GLuint Texture::get_id() const {
     return id;
 }
 
-GLuint Texture::get_slot() const {
-    return slot;
+GLuint Texture::get_unit() const {
+    return unit;
 }

@@ -20,14 +20,14 @@ public:
 
     static std::optional<ImageData> read_image(const std::filesystem::path& image_path);
     GLuint get_id() const;
-    GLuint get_slot() const;
+    GLuint get_unit() const;
 
 private:
     GLuint id{};
-    GLuint slot;
+    int unit;
     GLenum target;
 
-    // Global variable keeping track of which texture slots have been used.
+    // Global variable keeping track of which texture units have been used.
     // Increment after every call to glActiveTexture.
     static inline GLuint n_textures = 0;
 };
