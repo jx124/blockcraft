@@ -1,3 +1,4 @@
+#include "glm/geometric.hpp"
 #include "graphics/common.hpp"
 #include "graphics/window.hpp"
 
@@ -26,18 +27,19 @@ Window::Window(int width, int height, const char* title) : width(width), height(
     }
 
     glViewport(0, 0, width, height);
+
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, cursor_pos_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
 #ifdef DEBUG
     glEnable(GL_DEBUG_OUTPUT);
     std::cout << "[OpenGL] Version: " << glGetString(GL_VERSION) << std::endl;
     glDebugMessageCallback(error_message_callback, nullptr);
 #endif
-
-    glfwSetKeyCallback(window, key_callback);
-    glfwSetCursorPosCallback(window, cursor_pos_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetScrollCallback(window, scroll_callback);
 }
 
 GLFWwindow* Window::ptr() const {
@@ -118,7 +120,9 @@ void Window::error_message_callback(GLenum source, GLenum type, GLuint id, GLenu
 }
 
 void Window::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    (void)window, (void)scancode, (void)mods;
+    (void)scancode, (void)mods;
+
+    Window* win_ptr = static_cast<Window*>(glfwGetWindowUserPointer(window));
 
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -130,10 +134,69 @@ void Window::key_callback(GLFWwindow* window, int key, int scancode, int action,
             : action == GLFW_RELEASE
             ? "release"
             : "repeat") << std::endl;
+
+    Camera& camera = win_ptr->camera;
+
+    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+        win_ptr->state.go_forward = true;
+    }
+    if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
+        win_ptr->state.go_forward = false;
+    }
+    if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+        win_ptr->state.go_backward = true;
+    }
+    if (key == GLFW_KEY_S && action == GLFW_RELEASE) {
+        win_ptr->state.go_backward = false;
+    }
+    if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+        win_ptr->state.go_left = true;
+    }
+    if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
+        win_ptr->state.go_left = false;
+    }
+    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+        win_ptr->state.go_right = true;
+    }
+    if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
+        win_ptr->state.go_right = false;
+    }
 }
 
-void Window::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos) {
-    (void)window, (void)xpos, (void)ypos;
+void Window::cursor_pos_callback(GLFWwindow* window, double x_pos, double y_pos) {
+    Window* win_ptr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+
+    if (win_ptr->state.first_mouse) {
+        win_ptr->state.last_x = x_pos;
+        win_ptr->state.last_y = y_pos;
+        win_ptr->state.first_mouse = false;
+    }
+
+    float yaw_offset = win_ptr->state.last_x - x_pos;
+    float pitch_offset = win_ptr->state.last_y - y_pos;
+
+    win_ptr->state.last_x = x_pos;
+    win_ptr->state.last_y = y_pos;
+
+    Camera& camera = win_ptr->camera;
+    float sensitivity = camera.camera_sensitivity;
+
+    yaw_offset *= sensitivity;
+    pitch_offset *= sensitivity;
+
+    float &yaw = camera.yaw;
+    float &pitch = camera.pitch;
+
+    yaw -= yaw_offset;
+    pitch += pitch_offset;
+
+    pitch = std::clamp(pitch, -89.9f, 89.9f);
+
+    // pitch around x-axis first, then yaw around z-axis
+    glm::vec3 direction(std::sin(glm::radians(yaw)) * std::cos(glm::radians(pitch)),
+            std::cos(glm::radians(yaw)) * std::cos(glm::radians(pitch)),
+            std::sin(glm::radians(pitch)));
+    camera.camera_front = glm::normalize(direction);
 }
 
 void Window::mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {

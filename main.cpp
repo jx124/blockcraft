@@ -17,7 +17,7 @@ struct RenderCall {
 void render(RenderCall render_call) {
     glUseProgram(render_call.shader_id);
     Shader::set_uniform(render_call.shader_id, "textureId", (int)render_call.texture_unit);
-    Shader::set_uniform(render_call.shader_id, "MVP", render_call.transform);
+    Shader::set_uniform(render_call.shader_id, "model", render_call.transform);
 
     glBindVertexArray(render_call.VAO);
     glDrawArrays(GL_TRIANGLES, 0, render_call.n_vertices);
@@ -26,7 +26,7 @@ void render(RenderCall render_call) {
 int main() {
     Window window(800, 600, "Hello Window");
 
-    glClearColor(0.4f, 0.6f, 0.3f, 0.0f);
+    glClearColor(0.4f, 0.75f, 0.9f, 0.0f);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
@@ -37,19 +37,59 @@ int main() {
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     float vertices[] = {
-        // coords      // uv-coords
-        -1.0f, -1.0f,  0.0f,  0.0f,
-         1.0f, -1.0f,  1.0f,  0.0f,
-         1.0f,  1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  0.0f,  0.0f,
-         1.0f,  1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  0.0f,  1.0f,
+        // coords         // uv-coords
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+
+        // top
+        0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+        0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+
+        // left
+        0.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+
+        // right
+        1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+
+        //front
+        0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+        1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+
+        // back
+        0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f, 1.0f
     };
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -75,34 +115,50 @@ int main() {
 
     while (!glfwWindowShouldClose(window.ptr())) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
-        glm::mat4 model(1.0f);
-        model = glm::translate(model, {0.0f, 0.0f, -1.0f});
 
-        constexpr float aspect = 800.0f / 600.0f;
-        glm::mat4 proj = glm::ortho(-1.0f * aspect, 1.0f * aspect, -1.0f, 1.0f, -100.f, 100.0f);
-        glm::mat4 mvp = proj * model;
+        glm::mat4 model(1.0f);
+        model = glm::translate(model, {0.0f, 2.0f, 0.0f});
 
         RenderCall call_1 = {
-            mvp,
+            model,
             VAO,
             *program,
             stone_texture.get_unit(),
-            6
+            36
         };
 
-        model = glm::rotate(model, (float)glfwGetTime(), {0.0f, 0.0f, 1.0f});
-        model = glm::translate(model, {0.0f, 0.0f, 0.5f});
-        model = glm::scale(model, {0.5f, 0.5f, 1.0f});
-        mvp = proj * model;
+        model = glm::translate(model, {-1.0f, 0.0f, 0.0f});
 
         RenderCall call_2 = {
-            mvp,
+            model,
             VAO,
             *program,
             glass_texture.get_unit(),
-            6
+            36
         };
+
+        glUseProgram(*program);
+
+        Camera& camera = window.camera;
+        if (window.state.go_forward) {
+            camera.camera_pos += camera.camera_speed * camera.camera_front;
+        }
+        if (window.state.go_backward) {
+            camera.camera_pos -= camera.camera_speed * camera.camera_front;
+        }
+        if (window.state.go_left) {
+            camera.camera_pos -= glm::normalize(glm::cross(camera.camera_front, camera.camera_up)) * camera.camera_speed;
+        }
+        if (window.state.go_right) {
+            camera.camera_pos += glm::normalize(glm::cross(camera.camera_front, camera.camera_up)) * camera.camera_speed;
+        }
+
+        glm::mat4 view = glm::lookAt(camera.camera_pos, camera.camera_pos + camera.camera_front, camera.camera_up);
+        Shader::set_uniform(*program, "view", view);
+
+        constexpr float aspect = 800.0f / 600.0f;
+        glm::mat4 proj = glm::perspective(glm::radians(camera.fov), aspect, 0.1f, 1000.0f);
+        Shader::set_uniform(*program, "proj", proj);
 
         render(call_1);
         render(call_2);
