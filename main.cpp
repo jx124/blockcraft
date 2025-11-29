@@ -6,6 +6,8 @@
 #include "graphics/texture.hpp"
 #include "graphics/window.hpp"
 
+#include "utils/logger.hpp"
+
 struct RenderCall {
     glm::mat4 transform;
     GLuint VAO;
@@ -112,6 +114,8 @@ int main() {
     }
 
     Texture stone_texture = Texture(*stone, GL_TEXTURE_2D);
+
+    log_debug_line("stone texture location: %p", &stone_texture);
 
     while (!glfwWindowShouldClose(window.ptr())) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

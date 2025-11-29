@@ -1,7 +1,8 @@
 #include "graphics/shader.hpp"
 
+#include "utils/logger.hpp"
+
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <optional>
 
@@ -39,7 +40,7 @@ std::optional<std::string> Shader::parse_file(const std::filesystem::path& file_
     std::ifstream file{ file_path };
 
     if (!file.is_open()) {
-        std::cerr << "[Shader] Error opening file \"" << file_path << '"' << std::endl;
+        log_error("Error opening shader file \"%s\"", file_path.c_str());
         return std::nullopt;
     }
 
@@ -49,7 +50,7 @@ std::optional<std::string> Shader::parse_file(const std::filesystem::path& file_
     file.close();
 
     if (file_stream.bad()) {
-        std::cerr << "[Shader] Error reading \"" << file_path << '"' << std::endl;
+        log_error("Error reading shader file \"%s\"", file_path.c_str());
         return std::nullopt;
     }
     
@@ -81,7 +82,7 @@ std::optional<GLuint> Shader::compile(const std::string& source, Shader::Type ty
 
     if (!success) {
         glGetShaderInfoLog(shader, 512, NULL, log);
-        std::cerr << "[Shader] Error compiling " << shader_type_name << " shader:\n\t" << log << std::flush;
+        log_error("Error compiling %s shader:\n%s", shader_type_name, log);
         return std::nullopt;
     }
 
@@ -99,7 +100,7 @@ bool Shader::link(GLuint program_id, GLuint vertex_shader, GLuint fragment_shade
     
     if (!success) {
         glGetProgramInfoLog(program_id, 512, NULL, log);
-        std::cerr << "[Shader] Error linking shader:\n\t" << log << std::flush;
+        log_error("Error linking shader:\n%s", log);
         return false;
     }
 

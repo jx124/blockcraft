@@ -1,8 +1,8 @@
-#include "glm/geometric.hpp"
 #include "graphics/common.hpp"
 #include "graphics/window.hpp"
 
-#include <iostream>
+#include "utils/logger.hpp"
+
 #include <stdexcept>
 
 Window::Window(int width, int height, const char* title) : width(width), height(height), title(title) {
@@ -37,8 +37,8 @@ Window::Window(int width, int height, const char* title) : width(width), height(
 
 #ifdef DEBUG
     glEnable(GL_DEBUG_OUTPUT);
-    std::cout << "[OpenGL] Version: " << glGetString(GL_VERSION) << std::endl;
     glDebugMessageCallback(error_message_callback, nullptr);
+    log_debug("OpenGL Version %s", glGetString(GL_VERSION));
 #endif
 }
 
@@ -115,7 +115,7 @@ void Window::error_message_callback(GLenum source, GLenum type, GLuint id, GLenu
         return;
     }
 
-    std::fprintf(stderr, "[OpenGL] %s: %s.\n\tSeverity: %s.\n\tMessage: %s\n",
+    log_error("OpenGL %s: %s.\n\tSeverity: %s.\n\tMessage: %s\n",
             type_str, source_str, severity_str, message);
 }
 
@@ -128,14 +128,12 @@ void Window::key_callback(GLFWwindow* window, int key, int scancode, int action,
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
 
-    std::cout << "Key: " << key << ", action: " <<
-        (action == GLFW_PRESS 
+    log_debug("key: %d, action: %s", key,
+        action == GLFW_PRESS 
             ? "press" 
             : action == GLFW_RELEASE
             ? "release"
-            : "repeat") << std::endl;
-
-    Camera& camera = win_ptr->camera;
+            : "repeat");
 
     if (key == GLFW_KEY_W && action == GLFW_PRESS) {
         win_ptr->state.go_forward = true;

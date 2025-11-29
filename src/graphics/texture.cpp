@@ -1,5 +1,6 @@
 #include "graphics/texture.hpp"
-#include <iostream>
+
+#include "utils/logger.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "graphics/stb_image.h"
@@ -26,7 +27,7 @@ std::optional<ImageData> Texture::read_image(const std::filesystem::path& image_
 
     if (!data) {
         stbi_image_free(data);
-        std::cerr << "[Texture] Cannot read image file \"" << image_path << '"' << std::endl;
+        log_error("Error reading image file \"%s\"", image_path);
         return std::nullopt;
     }
 
