@@ -44,7 +44,7 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "GLFW lib only")
 set(GLFW_INSTALL OFF CACHE BOOL "GLFW lib only")
 set(GLAD_GL "")
 
-add_subdirectory(glfw)
+add_subdirectory(external/glfw)
 
 include_directories("${GLFW_SOURCE_DIR}/deps")
 set(GLAD_GL "${GLFW_SOURCE_DIR}/deps/glad/gl.h")
@@ -53,7 +53,7 @@ if(MSVC)
     SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup")
 endif()
 
-add_subdirectory(glm)
+add_subdirectory(external/glm)
 
 set(GLM_BUILD_TESTS OFF CACHE BOOL "GLM lib only")
 
