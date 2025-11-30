@@ -1,12 +1,12 @@
 #define GLAD_GL_IMPLEMENTATION
 #include "glad/gl.h"
 
+#include "ecs/ecs.hpp"
 #include "graphics/common.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/texture.hpp"
 #include "graphics/window.hpp"
-
-#include "utils/logger.hpp"
+#include "systems/physics.hpp"
 
 struct RenderCall {
     glm::mat4 transform;
@@ -115,7 +115,19 @@ int main() {
 
     Texture stone_texture = Texture(*stone, GL_TEXTURE_2D);
 
-    log_debug_line("stone texture location: %p", &stone_texture);
+    EntityComponentSystem ECS;
+    
+    auto physics_system = ECS.register_system<PhysicsSystem>();
+
+    ECS.add_components_to_system<PhysicsSystem, Transform, Velocity>();
+
+    std::vector<EntityID> entities(10);
+    for (auto& e : entities) {
+        e = ECS.create_entity().value_or(0);
+        ECS.add_component_to_entity(e, Transform{ (float)e * 0.1234f , (float)e * 0.6543f });
+        ECS.add_component_to_entity(e, Velocity{ (float)e * 0.7823f , (float)e * 0.6613f });
+    }
+    ECS.clear_unused_archetypes();
 
     while (!glfwWindowShouldClose(window.ptr())) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -166,6 +178,9 @@ int main() {
 
         render(call_1);
         render(call_2);
+
+        physics_system->print_info();
+        physics_system->update((float)glfwGetTime());
         
         glfwSwapBuffers(window.ptr());
         glfwPollEvents();
