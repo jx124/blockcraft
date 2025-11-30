@@ -1,6 +1,5 @@
 #include "ecs/ecs.hpp"
 
-
 std::optional<EntityID> EntityComponentSystem::create_entity() {
     return entity_manager.get_entity();
 }
