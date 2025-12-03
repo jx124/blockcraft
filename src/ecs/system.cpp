@@ -14,3 +14,7 @@ void System::delete_unused_archetypes(const std::unordered_set<ArchetypeID>& unu
         archetypes.end()
     );
 }
+
+void System::add_event(Event event) {
+    events.push(std::move(event));
+}

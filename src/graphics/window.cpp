@@ -22,7 +22,6 @@ void Window::create() {
     }
 
     glfwMakeContextCurrent(window);
-    glfwSetWindowUserPointer(window, this); // save a pointer to this Window instance; to be accessed in callbacks
 
     if (!gladLoadGL(glfwGetProcAddress)) {
         throw std::runtime_error("[Window] Cannot initialize GLAD");

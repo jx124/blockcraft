@@ -1,10 +1,12 @@
 #pragma once
 
 #include "ecs/ecs.hpp"
+#include "events/event_manager.hpp"
 #include "graphics/window.hpp"
-#include "systems/physics.hpp"
+#include "systems/common.hpp"
 
 #include <memory>
+#include <queue>
 
 struct RenderCall {
     glm::mat4 transform;
@@ -35,11 +37,13 @@ private:
     int height;
     std::unique_ptr<Window> window;
     bool should_close = false;
+    bool cursor_disabled = true;
 
-    // store EventManager, ECS, and systems
     EntityComponentSystem ECS{};
     std::shared_ptr<PhysicsSystem> physics_system{};
     std::vector<RenderCall> render_queue{};
+    EventManager event_manager{};
+    std::queue<Event> events{};
 
     static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
     static void error_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);

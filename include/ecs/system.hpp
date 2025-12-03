@@ -2,6 +2,7 @@
 
 #include "ecs/archetype.hpp"
 #include "ecs/common.hpp"
+#include "events/common.hpp"
 
 #include <unordered_set>
 #include <vector>
@@ -12,8 +13,10 @@ public:
     ~System() = default;
 
     void delete_unused_archetypes(const std::unordered_set<ArchetypeID>& unused_archetypes);
+    void add_event(Event event);
 
-    std::vector<Archetype*> archetypes {};
-    ArchetypeID archetype_id {};
+    std::vector<Archetype*> archetypes{};
+    ArchetypeID archetype_id{};
+    std::queue<Event> events{};
 };
 
