@@ -62,6 +62,15 @@ public:
         update_system_archetype(system_type_name);
     }
 
+    template <typename T>
+    T& get_component(EntityID entity) {
+        debug_assert(entity_archetype_map.contains(entity), "Entity does not exist");
+
+        ArchetypeID entity_archetype = entity_archetype_map.at(entity);
+        Archetype* archetype = archetypes.at(entity_archetype).get();
+        return archetype->get_component<T>(entity);
+    }
+
 private:
     void register_component_type(const char* type_name);
     void create_new_archetype(ArchetypeID new_archetype_id);

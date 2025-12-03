@@ -2,7 +2,7 @@
 
 #include "ecs/archetype.hpp"
 #include "ecs/common.hpp"
-#include "events/common.hpp"
+#include "events/event.hpp"
 
 #include <unordered_set>
 #include <vector>

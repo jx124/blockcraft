@@ -1,18 +1,6 @@
 #pragma once
 
 #include "graphics/common.hpp"
-#include "graphics/camera.hpp"
-
-struct WindowState {
-    bool first_mouse = true;
-    int last_x;
-    int last_y;
-
-    bool go_forward = false;
-    bool go_backward = false;
-    bool go_left = false;
-    bool go_right = false;
-};
 
 class Window {
 public:
@@ -31,9 +19,6 @@ public:
     GLFWwindow* ptr() const;
     bool should_close() const;
 
-    // TODO: remove from Window class
-    Camera camera{};
-    WindowState state{};
     int width;
     int height;
 private:

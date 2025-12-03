@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ecs/system.hpp"
-#include "events/common.hpp"
+#include "events/event.hpp"
 
 #include <queue>
 #include <unordered_map>

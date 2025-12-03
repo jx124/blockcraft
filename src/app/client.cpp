@@ -5,7 +5,7 @@
 
 #include "graphics/shader.hpp"
 #include "graphics/texture.hpp"
-#include "systems/physics.hpp"
+#include "utils/logger.hpp"
 
 ClientApplication::ClientApplication(int width, int height) : width(width), height(height), window(nullptr) {
     if (!glfwInit()) {
@@ -14,6 +14,9 @@ ClientApplication::ClientApplication(int width, int height) : width(width), heig
 
     window = std::make_unique<Window>(width, height, "Blockcraft Client");
     window->create();
+
+    // save a pointer to this ClientApplication instance; to be accessed in callbacks
+    glfwSetWindowUserPointer(window->ptr(), this);
 
     glfwSetFramebufferSizeCallback(window->ptr(), framebuffer_size_callback);
     glfwSetInputMode(window->ptr(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -123,21 +126,33 @@ void ClientApplication::run() {
     Texture stone_texture = Texture(*stone, GL_TEXTURE_2D);
 
     physics_system = ECS.register_system<PhysicsSystem>();
+    movement_system = ECS.register_system<MovementSystem>();
+    camera_system = ECS.register_system<CameraSystem>();
 
     ECS.add_components_to_system<PhysicsSystem, Transform, Velocity>();
+    ECS.add_components_to_system<MovementSystem, Transform, Velocity, PlayerMovement>();
 
-    std::vector<EntityID> entities(10);
-    for (auto& e : entities) {
-        e = ECS.create_entity().value_or(0);
-        ECS.add_component_to_entity(e, Transform{ (float)e * 0.1234f , (float)e * 0.6543f });
-        ECS.add_component_to_entity(e, Velocity{ (float)e * 0.7823f , (float)e * 0.6613f });
-    }
+    EntityID player = ECS.create_entity().value();
+    ECS.add_component_to_entity(player, Transform{});
+    ECS.add_component_to_entity(player, Velocity{});
+    ECS.add_component_to_entity(player, PlayerMovement{});
+    ECS.add_component_to_entity(player, Camera{});
+
     ECS.clear_unused_archetypes();
+
+    event_manager.subscribe_system_to_event<InputEvent>(physics_system.get());
+    event_manager.subscribe_system_to_event<MovementEvent>(movement_system.get());
+
+    camera_system->register_primary_camera();
 
     while (!should_close) {
         glfwPollEvents();
 
-        this->update((float)glfwGetTime());
+        event_manager.process_events(this->events);
+        float dt = (float)glfwGetTime() - previous_time;
+        previous_time = (float)glfwGetTime();
+
+        this->update(dt);
 
         glUseProgram(*program);
         glm::mat4 model(1.0f);
@@ -152,7 +167,6 @@ void ClientApplication::run() {
         };
 
         model = glm::translate(model, {-1.0f, 0.0f, 0.0f});
-
         RenderCall call_2 = {
             model,
             VAO,
@@ -161,26 +175,8 @@ void ClientApplication::run() {
             36
         };
 
-        Camera& camera = window->camera;
-        if (window->state.go_forward) {
-            camera.camera_pos += camera.camera_speed * camera.camera_front;
-        }
-        if (window->state.go_backward) {
-            camera.camera_pos -= camera.camera_speed * camera.camera_front;
-        }
-        if (window->state.go_left) {
-            camera.camera_pos -= glm::normalize(glm::cross(camera.camera_front, camera.camera_up)) * camera.camera_speed;
-        }
-        if (window->state.go_right) {
-            camera.camera_pos += glm::normalize(glm::cross(camera.camera_front, camera.camera_up)) * camera.camera_speed;
-        }
-
-        glm::mat4 view = glm::lookAt(camera.camera_pos, camera.camera_pos + camera.camera_front, camera.camera_up);
-        Shader::set_uniform(*program, "view", view);
-
-        constexpr float aspect = 800.0f / 600.0f;
-        glm::mat4 proj = glm::perspective(glm::radians(camera.fov), aspect, 0.1f, 1000.0f);
-        Shader::set_uniform(*program, "proj", proj);
+        Shader::set_uniform(*program, "view", camera_system->view());
+        Shader::set_uniform(*program, "proj", camera_system->projection());
 
         render_queue.push_back(std::move(call_1));
         render_queue.push_back(std::move(call_2));
@@ -197,8 +193,26 @@ void ClientApplication::run() {
 void ClientApplication::update(float dt) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    //physics_system->print_info();
+    movement_system->update(dt);
     physics_system->update(dt);
+    //physics_system->print_info();
+
+    while (!events.empty()) {
+        Event event = std::move(events.front());
+        EventType event_type = event.event;
+        events.pop();
+
+        ApplicationEvent* window_event = std::get_if<ApplicationEvent>(&event_type);
+        switch (window_event->type) {
+            case ApplicationEvent::Type::CloseWindow:
+                stop();
+                break;
+            case ApplicationEvent::Type::ToggleCursor:
+                glfwSetInputMode(window->ptr(), GLFW_CURSOR, cursor_disabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+                cursor_disabled = !cursor_disabled;
+                break;
+        }
+    }
 }
 
 // TODO: add layers
@@ -220,9 +234,12 @@ void ClientApplication::stop() {
 }
 
 void ClientApplication::framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    Window* win_ptr = static_cast<Window*>(glfwGetWindowUserPointer(window));
-    win_ptr->width = width;
-    win_ptr->height= height;
+    ClientApplication* app_ptr = static_cast<ClientApplication*>(glfwGetWindowUserPointer(window));
+
+    app_ptr->width = width;
+    app_ptr->height= height;
+    app_ptr->window->width = width;
+    app_ptr->window->height= height;
 
     glViewport(0, 0, width, height);
 }
@@ -295,11 +312,7 @@ void ClientApplication::error_message_callback(GLenum source, GLenum type, GLuin
 void ClientApplication::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     (void)scancode, (void)mods;
 
-    Window* win_ptr = static_cast<Window*>(glfwGetWindowUserPointer(window));
-
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
-    }
+    ClientApplication* app_ptr = static_cast<ClientApplication*>(glfwGetWindowUserPointer(window));
 
     log_debug("key: %d, action: %s", key,
         action == GLFW_PRESS 
@@ -308,70 +321,29 @@ void ClientApplication::key_callback(GLFWwindow* window, int key, int scancode, 
             ? "release"
             : "repeat");
 
-    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
-        win_ptr->state.go_forward = true;
-    }
-    if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
-        win_ptr->state.go_forward = false;
-    }
-    if (key == GLFW_KEY_S && action == GLFW_PRESS) {
-        win_ptr->state.go_backward = true;
-    }
-    if (key == GLFW_KEY_S && action == GLFW_RELEASE) {
-        win_ptr->state.go_backward = false;
-    }
-    if (key == GLFW_KEY_A && action == GLFW_PRESS) {
-        win_ptr->state.go_left = true;
-    }
-    if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
-        win_ptr->state.go_left = false;
-    }
-    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
-        win_ptr->state.go_right = true;
-    }
-    if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
-        win_ptr->state.go_right = false;
-    }
+    app_ptr->event_manager.queue_input_event(
+            Event::make_event(action == GLFW_PRESS 
+                ? InputEvent::Type::KeyPress 
+                : action == GLFW_RELEASE
+                ? InputEvent::Type::KeyRelease 
+                : InputEvent::Type::KeyRepeat, key));
 }
 
 void ClientApplication::cursor_pos_callback(GLFWwindow* window, double x_pos, double y_pos) {
-    Window* win_ptr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    ClientApplication* app_ptr = static_cast<ClientApplication*>(glfwGetWindowUserPointer(window));
 
-    if (win_ptr->state.first_mouse) {
-        win_ptr->state.last_x = x_pos;
-        win_ptr->state.last_y = y_pos;
-        win_ptr->state.first_mouse = false;
-    }
-
-    float yaw_offset = win_ptr->state.last_x - x_pos;
-    float pitch_offset = win_ptr->state.last_y - y_pos;
-
-    win_ptr->state.last_x = x_pos;
-    win_ptr->state.last_y = y_pos;
-
-    Camera& camera = win_ptr->camera;
-    float sensitivity = camera.camera_sensitivity;
-
-    yaw_offset *= sensitivity;
-    pitch_offset *= sensitivity;
-
-    float &yaw = camera.yaw;
-    float &pitch = camera.pitch;
-
-    yaw -= yaw_offset;
-    pitch += pitch_offset;
-
-    pitch = std::clamp(pitch, -89.9f, 89.9f);
-
-    // pitch around x-axis first, then yaw around z-axis
-    glm::vec3 direction(std::sin(glm::radians(yaw)) * std::cos(glm::radians(pitch)),
-            std::cos(glm::radians(yaw)) * std::cos(glm::radians(pitch)),
-            std::sin(glm::radians(pitch)));
-    camera.camera_front = glm::normalize(direction);
+    app_ptr->event_manager.queue_input_event(
+            Event::make_event(InputEvent::Type::MouseMove, 0, static_cast<float>(x_pos), static_cast<float>(y_pos)));
 }
 
 void ClientApplication::mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     (void)window, (void)button, (void)action, (void)mods;
+    log_debug("button: %d, action: %s", button,
+        action == GLFW_PRESS 
+            ? "press" 
+            : action == GLFW_RELEASE
+            ? "release"
+            : "repeat");
 }
 
 void ClientApplication::scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {

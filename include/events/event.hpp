@@ -8,16 +8,22 @@ struct InputEvent {
         KeyPress,
         KeyRelease,
         KeyRepeat,
-    } type;
+        MouseMove,
+        MouseClick,
+    } type{};
 
-    int key;
+    int key{};
+
+    // x, y represent both cursor positions and scroll offsets.
+    float x{};
+    float y{};
 };
 
 struct ApplicationEvent {
     enum class Type {
         CloseWindow,
         ToggleCursor,
-    } type;
+    } type{};
 };
 
 struct MovementEvent {
@@ -30,8 +36,12 @@ struct MovementEvent {
         StopMoveLeft,
         StartMoveRight,
         StopMoveRight,
-        Jump
-    } type;
+        Jump,
+        Turn,
+    } type{};
+
+    float x{};
+    float y{};
 };
 
 using EventType = std::variant<InputEvent, ApplicationEvent, MovementEvent>;

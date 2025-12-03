@@ -1,6 +1,5 @@
 #include "events/event_manager.hpp"
 #include "graphics/common.hpp"
-#include "utils/logger.hpp"
 
 void EventManager::queue_event(Event event) {
     events.push(std::move(event));
@@ -11,8 +10,6 @@ void EventManager::process_events(std::queue<Event>& app_event_queue) {
         Event event = std::move(events.front());
         events.pop();
         const char* event_type_name = event.get_type_name();
-
-        log_debug("Event type: %s, handled: %d", event.get_type_name(), event.handled);
 
         if (event_system_map.contains(event_type_name)) {
             for (System* system : event_system_map.at(event_type_name)) {
@@ -35,13 +32,16 @@ void EventManager::queue_input_event(Event event) {
                     queue_event(Event::make_event(MovementEvent::Type::StartMoveForward));
                     break;
                 case GLFW_KEY_A:
-                    queue_event(Event::make_event(MovementEvent::Type::StartMoveBackward));
+                    queue_event(Event::make_event(MovementEvent::Type::StartMoveLeft));
                     break;
                 case GLFW_KEY_S:
-                    queue_event(Event::make_event(MovementEvent::Type::StartMoveLeft));
+                    queue_event(Event::make_event(MovementEvent::Type::StartMoveBackward));
                     break;
                 case GLFW_KEY_D:
                     queue_event(Event::make_event(MovementEvent::Type::StartMoveRight));
+                    break;
+                case GLFW_KEY_SPACE:
+                    queue_event(Event::make_event(MovementEvent::Type::Jump));
                     break;
                 case GLFW_KEY_E:
                     queue_event(Event::make_event(ApplicationEvent::Type::ToggleCursor));
@@ -58,10 +58,10 @@ void EventManager::queue_input_event(Event event) {
                     queue_event(Event::make_event(MovementEvent::Type::StopMoveForward));
                     break;
                 case GLFW_KEY_A:
-                    queue_event(Event::make_event(MovementEvent::Type::StopMoveBackward));
+                    queue_event(Event::make_event(MovementEvent::Type::StopMoveLeft));
                     break;
                 case GLFW_KEY_S:
-                    queue_event(Event::make_event(MovementEvent::Type::StopMoveLeft));
+                    queue_event(Event::make_event(MovementEvent::Type::StopMoveBackward));
                     break;
                 case GLFW_KEY_D:
                     queue_event(Event::make_event(MovementEvent::Type::StopMoveRight));
@@ -69,6 +69,8 @@ void EventManager::queue_input_event(Event event) {
                 default:
                     break;
             }
+        } else if (input_event->type == InputEvent::Type::MouseMove) {
+            queue_event(Event::make_event(MovementEvent::Type::Turn, input_event->x, input_event->y));
         }
     }
 }
