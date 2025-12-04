@@ -1,5 +1,4 @@
 #include "events/event_manager.hpp"
-#include "graphics/common.hpp"
 
 void EventManager::queue_event(Event event) {
     events.push(std::move(event));

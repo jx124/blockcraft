@@ -111,7 +111,7 @@ void ClientApplication::run() {
         return;
     }
 
-    std::optional<ImageData> glass = Texture::read_image("data/assets/glass.png");
+    std::optional<ImageData> glass = Texture::read_image("data/assets/water.png");
     if (!glass) {
         return;
     }

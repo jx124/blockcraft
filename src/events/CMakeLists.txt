@@ -1,1 +1,4 @@
-target_sources(blockcraft PRIVATE event_manager.cpp)
+target_sources(blockcraft PRIVATE
+    event.cpp
+    event_manager.cpp
+)

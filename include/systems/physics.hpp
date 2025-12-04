@@ -6,7 +6,8 @@
 
 #include <vector>
 
-struct PhysicsSystem : public System {
+class PhysicsSystem : public System {
+public:
     void update(float dt) {
         for (Archetype* archetype : archetypes) {
             std::vector<Transform>& transforms = archetype->get_component_vector<Transform>();

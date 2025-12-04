@@ -48,9 +48,6 @@ using EventType = std::variant<InputEvent, ApplicationEvent, MovementEvent>;
 
 class Event {
 public:
-    EventType event;
-    bool handled = false;
-
     // Helper function to automatically deduce the variant used and call the corresponding constructor.
     // This allows us to directly create an Event with Event::make_event(InputEvent::Type::KeyPress, 1)
     // instead of doing Event{ InputEvent{InputEvent::Type::KeyPress, 1} }.
@@ -71,7 +68,8 @@ public:
         }
     }
 
-    const char* get_type_name() {
-        return std::visit([](auto&& v){ return typeid(v).name(); }, event);
-    }
+    const char* get_type_name();
+
+    EventType event{};
+    bool handled = false;
 };
