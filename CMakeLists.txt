@@ -46,8 +46,18 @@ set(GLAD_GL "")
 
 add_subdirectory(external/glfw)
 
-include_directories("${GLFW_SOURCE_DIR}/deps")
-set(GLAD_GL "${GLFW_SOURCE_DIR}/deps/glad/gl.h")
+set(GLAD_SOURCES_DIR "${PROJECT_SOURCE_DIR}/external/glad")
+add_subdirectory("${GLAD_SOURCES_DIR}/cmake")
+
+glad_add_library(glad_gl_core_46
+    REPRODUCIBLE
+    STATIC
+    LOCATION "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    API gl:core=4.6
+    EXTENSIONS GL_KHR_debug
+)
+
+set(GLAD_GL "${CMAKE_CURRENT_BINARY_DIR}/generated/include/glad/gl.h")
 
 if(MSVC)
     SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup")
@@ -57,8 +67,8 @@ add_subdirectory(external/glm)
 
 set(GLM_BUILD_TESTS OFF CACHE BOOL "GLM lib only")
 
-add_executable(blockcraft WIN32 main.cpp ${GLAD_GL})
-target_link_libraries(blockcraft ${OPENGL_LIBRARIES} glfw glm::glm)
+add_executable(blockcraft WIN32 main.cpp)
+target_link_libraries(blockcraft ${OPENGL_LIBRARIES} glad_gl_core_46 glfw glm::glm)
 
 add_subdirectory(src)
 add_subdirectory(include)
