@@ -10,7 +10,7 @@
 // Simple container for all the archetypes that match the system archetype or are a superset of it.
 class System {
 public:
-    ~System() = default;
+    virtual ~System() = default;
 
     void delete_unused_archetypes(const std::unordered_set<ArchetypeID>& unused_archetypes);
     void add_event(Event event);

@@ -33,17 +33,16 @@ public:
 
     template <typename T>
         requires std::is_base_of_v<System, T>
-    std::shared_ptr<T> register_system() {
+    T* register_system() {
 
         const char* type_name = typeid(T).name();
         debug_assert(!systems.contains(type_name), "System already registered");
 
         log_debug("Registering system %s", type_name);
 
-        std::shared_ptr<T> system = std::make_shared<T>();
-        systems.insert({type_name, system});
+        systems.emplace(type_name, std::make_unique<T>());
         system_archetype_map.insert({type_name, 0});
-        return system;
+        return static_cast<T*>(systems.at(type_name).get());
     }
 
     template <typename System, typename... Components>
@@ -129,8 +128,6 @@ private:
     std::unordered_map<ArchetypeID, std::unique_ptr<Archetype>> archetypes{};
     std::unordered_map<const char*, ComponentID> type_component_map{};
     std::unordered_map<const char*, ArchetypeID> system_archetype_map{};
-
-    // TODO: check if we need shared_ptrs here, since the event system might not need to own the systems
-    std::unordered_map<const char*, std::shared_ptr<System>> systems{};
+    std::unordered_map<const char*, std::unique_ptr<System>> systems{};
 };
 

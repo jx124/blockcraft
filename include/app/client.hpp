@@ -41,9 +41,9 @@ private:
     float previous_time = 0.0f;
 
     EntityComponentSystem ECS{};
-    std::shared_ptr<PhysicsSystem> physics_system{};
-    std::shared_ptr<MovementSystem> movement_system{};
-    std::shared_ptr<CameraSystem> camera_system{};
+    PhysicsSystem* physics_system{};
+    MovementSystem* movement_system{};
+    CameraSystem* camera_system{};
     std::vector<RenderCall> render_queue{};
     EventManager event_manager{};
     std::queue<Event> events{};

@@ -140,8 +140,8 @@ void ClientApplication::run() {
 
     ECS.clear_unused_archetypes();
 
-    event_manager.subscribe_system_to_event<InputEvent>(physics_system.get());
-    event_manager.subscribe_system_to_event<MovementEvent>(movement_system.get());
+    event_manager.subscribe_system_to_event<InputEvent>(physics_system);
+    event_manager.subscribe_system_to_event<MovementEvent>(movement_system);
 
     camera_system->register_primary_camera();
 

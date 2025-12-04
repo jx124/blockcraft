@@ -28,7 +28,7 @@ public:
     }
 
 private:
-    // Both EventManager and System are managed by ClientApplication, so EventManager will not outlive System?
+    // Systems are owned by ECS
     std::unordered_map<const char*, std::vector<System*>> event_system_map{};
     std::queue<Event> events{};
 };

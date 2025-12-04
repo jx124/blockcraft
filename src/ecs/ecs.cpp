@@ -64,7 +64,7 @@ void EntityComponentSystem::create_new_archetype(ArchetypeID new_archetype_id) {
 }
 
 void EntityComponentSystem::update_system_archetype(const char* system_type) {
-    std::shared_ptr<System> system = systems.at(system_type);
+    System* system = systems.at(system_type).get();
     ArchetypeID new_archetype_id = system_archetype_map.at(system_type);
     system->archetypes.clear();
     system->archetype_id = new_archetype_id;
