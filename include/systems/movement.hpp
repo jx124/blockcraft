@@ -64,6 +64,16 @@ public:
         }
     }
 
+    void reset_first_mouse() {
+        for (Archetype* archetype : archetypes) {
+            std::vector<PlayerMovement>& movements = archetype->get_component_vector<PlayerMovement>();
+
+            for (size_t i = 0; i < archetype->size(); i++) {
+                movements[i].first_mouse = true;
+            }
+        }
+    }
+
 private:
     // Read all MovementEvents in queue and update PlayerMovement accordingly.
     void update_movement(PlayerMovement& movement) {

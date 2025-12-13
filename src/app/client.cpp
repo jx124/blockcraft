@@ -1,10 +1,11 @@
+#include "texture_manager.hpp"
 #define GLAD_GL_IMPLEMENTATION
 #include "glad/gl.h"
 
 #include "app/client.hpp"
 
+#include "blocks/chunk.hpp"
 #include "graphics/shader.hpp"
-#include "graphics/texture.hpp"
 #include "utils/logger.hpp"
 
 ClientApplication::ClientApplication(int width, int height) : width(width), height(height), window(nullptr) {
@@ -43,87 +44,31 @@ void ClientApplication::run() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
 
-    GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    float vertices[] = {
-        // coords         // uv-coords
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-
-        // top
-        0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-        0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-
-        // left
-        0.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-
-        // right
-        1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-        1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-
-        //front
-        0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
-        1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-        1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-
-        // back
-        0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f, 1.0f
-    };
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    std::optional<GLuint> program = Shader::create("data/shaders/plain.vert", "data/shaders/plain.frag");
+    std::optional<GLuint> program = Shader::create("data/shaders/voxel.vert", "data/shaders/voxel.frag");
     if (!program) {
         return;
     }
 
-    std::optional<ImageData> glass = Texture::read_image("data/assets/water.png");
-    if (!glass) {
-        return;
-    }
+    TextureManager texture_manager;
+    texture_manager.register_block_face("data/assets/grass.png", Block::Type::GRASS, VoxelQuad::Face::TOP);
+    texture_manager.register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::LEFT);
+    texture_manager.register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::RIGHT);
+    texture_manager.register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::FRONT);
+    texture_manager.register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::BACK);
+    texture_manager.register_block_face("data/assets/dirt.png", Block::Type::DIRT, VoxelQuad::Face::BOTTOM);
+    texture_manager.register_block("data/assets/stone.png", Block::Type::STONE);
+    texture_manager.register_block("data/assets/dirt.png", Block::Type::DIRT);
+    texture_manager.register_block("data/assets/glass.png", Block::Type::GLASS);
+    texture_manager.register_block("data/assets/water.png", Block::Type::WATER);
+    texture_manager.generate_texture_array();
 
-    Texture glass_texture = Texture(*glass, GL_TEXTURE_2D);
+    Chunk chunk1({0, 0}, 1234);
+    chunk1.generate_blocks_from_seed();
+    chunk1.convert_to_mesh(texture_manager);
 
-    std::optional<ImageData> stone = Texture::read_image("data/assets/stone.png");
-    if (!stone) {
-        return;
-    }
-
-    Texture stone_texture = Texture(*stone, GL_TEXTURE_2D);
+    Chunk chunk2({0, 1}, 1234);
+    chunk2.generate_blocks_from_seed();
+    chunk2.convert_to_mesh(texture_manager);
 
     physics_system = ECS.register_system<PhysicsSystem>();
     movement_system = ECS.register_system<MovementSystem>();
@@ -133,7 +78,7 @@ void ClientApplication::run() {
     ECS.add_components_to_system<MovementSystem, Transform, Velocity, PlayerMovement>();
 
     EntityID player = ECS.create_entity().value();
-    ECS.add_component_to_entity(player, Transform{});
+    ECS.add_component_to_entity(player, Transform{{8.0f, 8.0f, 160.0f}, {}});
     ECS.add_component_to_entity(player, Velocity{});
     ECS.add_component_to_entity(player, PlayerMovement{});
     ECS.add_component_to_entity(player, Camera{});
@@ -156,27 +101,26 @@ void ClientApplication::run() {
 
         glUseProgram(*program);
         glm::mat4 model(1.0f);
-        model = glm::translate(model, {0.0f, 2.0f, 0.0f});
 
         RenderCall call_1 = {
             model,
-            VAO,
+            chunk1.get_VAO(),
             *program,
-            stone_texture.get_unit(),
-            36
+            texture_manager.get_texture_unit(),
+            chunk1.get_num_vertices(),
         };
 
-        model = glm::translate(model, {-1.0f, 0.0f, 0.0f});
+        model = glm::translate(model, {0.0f, 16.0f, 0.0f});
         RenderCall call_2 = {
             model,
-            VAO,
+            chunk2.get_VAO(),
             *program,
-            glass_texture.get_unit(),
-            36
+            texture_manager.get_texture_unit(),
+            chunk2.get_num_vertices(),
         };
 
         Shader::set_uniform(*program, "view", camera_system->view());
-        Shader::set_uniform(*program, "proj", camera_system->projection());
+        Shader::set_uniform(*program, "projection", camera_system->projection());
 
         render_queue.push_back(std::move(call_1));
         render_queue.push_back(std::move(call_2));
@@ -210,6 +154,9 @@ void ClientApplication::update(float dt) {
             case ApplicationEvent::Type::ToggleCursor:
                 glfwSetInputMode(window->ptr(), GLFW_CURSOR, cursor_disabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
                 cursor_disabled = !cursor_disabled;
+                if (!cursor_disabled) {
+                    movement_system->reset_first_mouse();
+                }
                 break;
         }
     }

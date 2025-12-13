@@ -14,7 +14,7 @@ struct Velocity {
 };
 
 struct PlayerMovement {
-    float movement_speed = 5.0f;
+    float movement_speed = 50.0f;
     float camera_speed = 0.1f;
     float last_x{};
     float last_y{};

@@ -11,12 +11,13 @@ struct ImageData {
     std::filesystem::path path;
     int width;
     int height;
-    int n_channels;
+    int n_channels; // original number of channels, all images are in RGBA format to fit array
 };
 
 class Texture {
 public:
     Texture(const ImageData& image_data, GLenum target);
+    Texture(const std::vector<ImageData>& image_data, GLenum target);
 
     static std::optional<ImageData> read_image(const std::filesystem::path& image_path);
     GLuint get_id() const;
