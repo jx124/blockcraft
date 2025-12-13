@@ -21,14 +21,14 @@ public:
     ClientApplication(int width, int height);
     ~ClientApplication();
     ClientApplication(const ClientApplication&) = delete;
-    ClientApplication(ClientApplication&&) = default;
+    ClientApplication(ClientApplication&&) noexcept = default;
     ClientApplication& operator=(const ClientApplication&) = delete;
-    ClientApplication& operator=(ClientApplication&&) = default;
+    ClientApplication& operator=(ClientApplication&&) noexcept = default;
 
     // Start main loop of the application.
     void run();
 
-    void update(float dt);
+    void update();
     void render();
     void stop();
 
@@ -39,6 +39,7 @@ private:
     bool should_close = false;
     bool cursor_disabled = true;
     float previous_time = 0.0f;
+    float dt = 0.0f;
 
     EntityComponentSystem ECS{};
     PhysicsSystem* physics_system{};

@@ -1,3 +1,4 @@
+#include "blocks/chunk_manager.hpp"
 #include "texture_manager.hpp"
 #define GLAD_GL_IMPLEMENTATION
 #include "glad/gl.h"
@@ -44,35 +45,16 @@ void ClientApplication::run() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
 
-    std::optional<GLuint> program = Shader::create("data/shaders/voxel.vert", "data/shaders/voxel.frag");
-    if (!program) {
+    GLuint voxel_shader = Shader::create("data/shaders/voxel.vert", "data/shaders/voxel.frag").value_or(0);
+    if (!voxel_shader) {
         return;
     }
 
     TextureManager texture_manager;
-    texture_manager.register_block_face("data/assets/grass.png", Block::Type::GRASS, VoxelQuad::Face::TOP);
-    texture_manager.register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::LEFT);
-    texture_manager.register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::RIGHT);
-    texture_manager.register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::FRONT);
-    texture_manager.register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::BACK);
-    texture_manager.register_block_face("data/assets/dirt.png", Block::Type::DIRT, VoxelQuad::Face::BOTTOM);
-    texture_manager.register_block("data/assets/stone.png", Block::Type::STONE);
-    texture_manager.register_block("data/assets/dirt.png", Block::Type::DIRT);
-    texture_manager.register_block("data/assets/glass.png", Block::Type::GLASS);
-    texture_manager.register_block("data/assets/water.png", Block::Type::WATER);
-    texture_manager.generate_texture_array();
 
     int seed = 2345;
     int chunk_radius = 10;
-    std::vector<Chunk> chunks;
-
-    for (int i = -chunk_radius; i <= chunk_radius; i++) {
-        for (int j = -chunk_radius; j <= chunk_radius; j++) {
-            chunks.emplace_back(glm::ivec2(i, j), seed);
-            chunks.back().generate_blocks_from_seed();
-            chunks.back().convert_to_mesh(texture_manager);
-        }
-    }
+    ChunkManager chunk_manager(seed, chunk_radius);
 
     physics_system = ECS.register_system<PhysicsSystem>();
     movement_system = ECS.register_system<MovementSystem>();
@@ -98,26 +80,29 @@ void ClientApplication::run() {
         glfwPollEvents();
 
         event_manager.process_events(this->events);
-        float dt = (float)glfwGetTime() - previous_time;
-        previous_time = (float)glfwGetTime();
+        this->update();
 
-        this->update(dt);
+        movement_system->update(dt, chunk_manager);
+        physics_system->update(dt);
 
-        glUseProgram(*program);
-        glm::mat4 model(1.0f);
+        chunk_manager.load_chunks(1, texture_manager);
+        chunk_manager.unload_chunks(1);
 
-        for (const auto& chunk : chunks) {
+        glUseProgram(voxel_shader);
+        glm::mat4 identity(1.0f);
+
+        for (const auto& chunk : chunk_manager.get_chunks()) {
             render_queue.emplace_back(
-                glm::translate(model, chunk.to_world_pos(glm::vec3(0.0f))),
+                glm::translate(identity, chunk.to_world_pos(glm::vec3(0.0f))),
                 chunk.get_VAO(),
-                *program,
+                voxel_shader,
                 texture_manager.get_texture_unit(),
                 chunk.get_num_vertices()
             );
         }
 
-        Shader::set_uniform(*program, "view", camera_system->view());
-        Shader::set_uniform(*program, "projection", camera_system->projection());
+        Shader::set_uniform(voxel_shader, "view", camera_system->view());
+        Shader::set_uniform(voxel_shader, "projection", camera_system->projection());
 
         this->render();
         window->update();
@@ -128,12 +113,12 @@ void ClientApplication::run() {
     }
 }
 
-void ClientApplication::update(float dt) {
+// Update application specific events and fields
+void ClientApplication::update() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    movement_system->update(dt);
-    physics_system->update(dt);
-    //physics_system->print_info();
+    dt = (float)glfwGetTime() - previous_time;
+    previous_time = (float)glfwGetTime();
 
     while (!events.empty()) {
         Event event = std::move(events.front());
@@ -254,13 +239,6 @@ void ClientApplication::key_callback(GLFWwindow* window, int key, int scancode, 
     (void)scancode, (void)mods;
 
     ClientApplication* app_ptr = static_cast<ClientApplication*>(glfwGetWindowUserPointer(window));
-
-    log_debug("key: %d, action: %s", key,
-        action == GLFW_PRESS 
-            ? "press" 
-            : action == GLFW_RELEASE
-            ? "release"
-            : "repeat");
 
     app_ptr->event_manager.queue_input_event(
             Event::make_event(action == GLFW_PRESS 

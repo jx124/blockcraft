@@ -1,11 +1,12 @@
 #pragma once
 
+#include "blocks/chunk_manager.hpp"
 #include "systems/datatypes.hpp"
 #include "ecs/system.hpp"
 
 class MovementSystem : public System {
 public:
-    void update(float dt) {
+    void update(float dt, ChunkManager& chunk_manager) {
         for (Archetype* archetype : archetypes) {
             std::vector<Transform>& transforms = archetype->get_component_vector<Transform>();
             std::vector<Velocity>& velocities = archetype->get_component_vector<Velocity>();
@@ -21,36 +22,38 @@ public:
                 
                 if (movement.go_forward) {
                     position += movement.movement_speed * front * dt;
-                    log_debug("Forward");
-                    log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
-                    log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
+                    //log_debug("Forward");
+                    //log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
+                    //log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
                 }
                 if (movement.go_backward) {
                     position -= movement.movement_speed * front * dt;
-                    log_debug("Backward");
-                    log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
-                    log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
+                    //log_debug("Backward");
+                    //log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
+                    //log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
                 }
                 if (movement.go_left) {
                     position -= movement.movement_speed * glm::normalize(glm::cross(front, WORLD_UP)) * dt;
-                    log_debug("Left");
-                    log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
-                    log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
+                    //log_debug("Left");
+                    //log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
+                    //log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
                 }
                 if (movement.go_right) {
                     position += movement.movement_speed * glm::normalize(glm::cross(front, WORLD_UP)) * dt;
-                    log_debug("Right");
-                    log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
-                    log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
+                    //log_debug("Right");
+                    //log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
+                    //log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
                 }
                 if (movement.jump) {
                     velocity += movement.movement_speed * WORLD_UP;
-                    log_debug("Jump");
-                    log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
-                    log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
+                    //log_debug("Jump");
+                    //log_debug("Position: %f, %f, %f", position.x, position.y, position.z);
+                    //log_debug("Velocity: %f, %f, %f", velocity.x, velocity.y, velocity.z);
                 }
 
                 position += dt * velocity;
+
+                chunk_manager.update(position);
 
                 float pitch = movement.pitch;
                 float yaw = movement.yaw;

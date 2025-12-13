@@ -1,8 +1,19 @@
 #include "graphics/texture_manager.hpp"
-#include "utils/logger.hpp"
 
 TextureManager::TextureManager() {
     block_texture_map.resize(Block::Type::SIZE);
+
+    this->register_block_face("data/assets/grass.png", Block::Type::GRASS, VoxelQuad::Face::TOP);
+    this->register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::LEFT);
+    this->register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::RIGHT);
+    this->register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::FRONT);
+    this->register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::BACK);
+    this->register_block_face("data/assets/dirt.png", Block::Type::DIRT, VoxelQuad::Face::BOTTOM);
+    this->register_block("data/assets/stone.png", Block::Type::STONE);
+    this->register_block("data/assets/dirt.png", Block::Type::DIRT);
+    this->register_block("data/assets/glass.png", Block::Type::GLASS);
+    this->register_block("data/assets/water.png", Block::Type::WATER);
+    this->generate_texture_array();
 }
 
 // Set the texture to be used by all faces of a block
@@ -58,6 +69,5 @@ GLuint TextureManager::get_texture_unit() const {
     if (texture) {
         return texture->get_unit();
     }
-    log_debug("Texture not yet initialized in TextureManager. Did you call generate_texture_array()?");
     return 0;
 }

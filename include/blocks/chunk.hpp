@@ -33,8 +33,13 @@ class Chunk {
 public:
     Chunk(glm::ivec2 chunk_coords, int seed);
 
+    Chunk(const Chunk& other) = delete;
+    Chunk& operator=(const Chunk& other) = delete;
+    Chunk(Chunk&& other) noexcept = default;
+    Chunk& operator=(Chunk&& other) noexcept = default;
+
     glm::vec3 to_world_pos(glm::vec3 chunk_pos) const;
-    glm::vec3 to_chunk_pos(glm::vec3 world_pos) const;
+    static glm::vec3 to_chunk_pos(glm::vec3 world_pos);
 
     // TODO: change ordering of storage
     size_t to_block_index(glm::vec3 world_pos) const;
@@ -45,6 +50,14 @@ public:
 
     GLuint get_VAO() const;
     size_t get_num_vertices() const;
+    glm::ivec2 get_chunk_coords() const;
+
+    // Delete the vertex array and buffer objects from the GPU.
+    void clear() {
+        glBindVertexArray(0);
+        glDeleteBuffers(1, &mesh.VBO);
+        glDeleteVertexArrays(1, &mesh.VAO);
+    }
 
 private:
     // TODO: check neighboring blocks for face culling and set block type depending on face

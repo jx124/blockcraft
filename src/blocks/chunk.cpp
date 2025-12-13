@@ -36,12 +36,12 @@ glm::vec3 Chunk::to_world_pos(glm::vec3 chunk_pos) const {
              chunk_pos.z };
 }
 
-glm::vec3 Chunk::to_chunk_pos(glm::vec3 world_pos) const {
+glm::vec3 Chunk::to_chunk_pos(glm::vec3 world_pos) {
     return glm::mod(world_pos, { CHUNK_LENGTH, CHUNK_WIDTH, CHUNK_HEIGHT });
 }
 
 size_t Chunk::to_block_index(glm::vec3 world_pos) const {
-    glm::ivec3 chunk_pos = glm::floor(to_chunk_pos(world_pos));
+    glm::ivec3 chunk_pos = glm::floor(Chunk::to_chunk_pos(world_pos));
     return CHUNK_LENGTH * CHUNK_WIDTH * chunk_pos.z + CHUNK_LENGTH * chunk_pos.y + chunk_pos.x;
 }
 
@@ -200,4 +200,8 @@ GLuint Chunk::get_VAO() const {
 
 size_t Chunk::get_num_vertices() const {
     return mesh.vertices.size();
+}
+
+glm::ivec2 Chunk::get_chunk_coords() const {
+    return chunk_coords;
 }
