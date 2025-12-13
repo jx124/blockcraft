@@ -1,7 +1,7 @@
 # Blockcraft
 This is my attempt at making a multiplayer Minecraft clone to learn more about computer graphics, game development, and networking.
 
-![Screenshot of Blockcraft]{/client_preview.png}
+![Screenshot of Blockcraft](/client_preview.png)
 
 ## Quick Start
 On Linux:
