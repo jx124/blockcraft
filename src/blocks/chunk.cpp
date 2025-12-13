@@ -20,25 +20,27 @@ Chunk::Chunk(glm::ivec2 chunk_coords, int seed)
     glGenBuffers(1, &mesh.VBO);
     glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, x));
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, u));
     glEnableVertexAttribArray(1);
-    glVertexAttribIPointer(2, 1, GL_INT, 6 * sizeof(float), (void*)(5 * sizeof(float)));
+    glVertexAttribIPointer(2, 1, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, texture_index));
     glEnableVertexAttribArray(2);
+    glVertexAttribIPointer(3, 1, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, face));
+    glEnableVertexAttribArray(3);
 };
 
-glm::vec3 Chunk::to_world_pos(glm::vec3 chunk_pos) {
+glm::vec3 Chunk::to_world_pos(glm::vec3 chunk_pos) const {
     return { static_cast<float>(chunk_coords.x * CHUNK_LENGTH) + chunk_pos.x,
              static_cast<float>(chunk_coords.y * CHUNK_WIDTH) + chunk_pos.y,
              chunk_pos.z };
 }
 
-glm::vec3 Chunk::to_chunk_pos(glm::vec3 world_pos) {
+glm::vec3 Chunk::to_chunk_pos(glm::vec3 world_pos) const {
     return glm::mod(world_pos, { CHUNK_LENGTH, CHUNK_WIDTH, CHUNK_HEIGHT });
 }
 
-size_t Chunk::to_block_index(glm::vec3 world_pos) {
+size_t Chunk::to_block_index(glm::vec3 world_pos) const {
     glm::ivec3 chunk_pos = glm::floor(to_chunk_pos(world_pos));
     return CHUNK_LENGTH * CHUNK_WIDTH * chunk_pos.z + CHUNK_LENGTH * chunk_pos.y + chunk_pos.x;
 }
@@ -51,8 +53,8 @@ Block& Chunk::get_block(glm::ivec3 chunk_pos) {
 void Chunk::generate_blocks_from_seed() {
     for (int i = 0; i < CHUNK_LENGTH; i++) {
         for (int j = 0; j < CHUNK_WIDTH; j++) {
-            float x = static_cast<float>(i + chunk_coords.x * CHUNK_LENGTH) / (32 * CHUNK_LENGTH);
-            float y = static_cast<float>(j + chunk_coords.y * CHUNK_WIDTH) / (32 * CHUNK_WIDTH);
+            float x = static_cast<float>(i + chunk_coords.x * CHUNK_LENGTH) / (16 * CHUNK_LENGTH);
+            float y = static_cast<float>(j + chunk_coords.y * CHUNK_WIDTH) / (16 * CHUNK_WIDTH);
 
             // elevation noise in range [0, 0.1]
             float elevation = 0.05f 
@@ -135,59 +137,59 @@ void Chunk::generate_vertex_data(const VoxelQuad& quad, const TextureManager& te
     int texture_index = 0;
 
     switch (quad.face) {
-        case VoxelQuad::Face::BOTTOM:
-            texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::BOTTOM);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 0.0f, 1.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 0.0f, 0.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 0.0f, texture_index);
-            break;
         case VoxelQuad::Face::TOP:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::TOP);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 1.0f, 1.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 1.0f, 0.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index, VoxelQuad::Face::TOP);
+            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 1.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::TOP);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 1.0f, texture_index, VoxelQuad::Face::TOP);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 1.0f, texture_index, VoxelQuad::Face::TOP);
+            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 1.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::TOP);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index, VoxelQuad::Face::TOP);
+            break;
+        case VoxelQuad::Face::BOTTOM:
+            texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::BOTTOM);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 0.0f, texture_index, VoxelQuad::Face::BOTTOM);
+            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 0.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::BOTTOM);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index, VoxelQuad::Face::BOTTOM);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index, VoxelQuad::Face::BOTTOM);
+            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 0.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::BOTTOM);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 0.0f, texture_index, VoxelQuad::Face::BOTTOM);
             break;
         case VoxelQuad::Face::LEFT:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::LEFT);
-            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index);
+            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::LEFT);
+            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index, VoxelQuad::Face::LEFT);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::LEFT);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::LEFT);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index, VoxelQuad::Face::LEFT);
+            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::LEFT);
             break;
         case VoxelQuad::Face::RIGHT:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::RIGHT);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::RIGHT);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index, VoxelQuad::Face::RIGHT);
+            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::RIGHT);
+            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::RIGHT);
+            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index, VoxelQuad::Face::RIGHT);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::RIGHT);
             break;
         case VoxelQuad::Face::FRONT:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::FRONT);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 0.0f, 1.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 1.0f, 1.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 1.0f, 1.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::FRONT);
+            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 0.0f, 1.0f, 1.0f, texture_index, VoxelQuad::Face::FRONT);
+            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 1.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::FRONT);
+            mesh.vertices.emplace_back(x + 1.0f, y + 0.0f, z + 1.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::FRONT);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 1.0f, 0.0f, 0.0f, texture_index, VoxelQuad::Face::FRONT);
+            mesh.vertices.emplace_back(x + 0.0f, y + 0.0f, z + 0.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::FRONT);
             break;
         case VoxelQuad::Face::BACK:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::BACK);
-            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 0.0f, 0.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 1.0f, 0.0f, 0.0f, texture_index);
-            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 0.0f, 0.0f, 1.0f, texture_index);
+            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 0.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::BACK);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 0.0f, 1.0f, 1.0f, texture_index, VoxelQuad::Face::BACK);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::BACK);
+            mesh.vertices.emplace_back(x + 1.0f, y + 1.0f, z + 1.0f, 1.0f, 0.0f, texture_index, VoxelQuad::Face::BACK);
+            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 1.0f, 0.0f, 0.0f, texture_index, VoxelQuad::Face::BACK);
+            mesh.vertices.emplace_back(x + 0.0f, y + 1.0f, z + 0.0f, 0.0f, 1.0f, texture_index, VoxelQuad::Face::BACK);
             break;
     }
 }

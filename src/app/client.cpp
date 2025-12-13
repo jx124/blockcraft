@@ -62,13 +62,17 @@ void ClientApplication::run() {
     texture_manager.register_block("data/assets/water.png", Block::Type::WATER);
     texture_manager.generate_texture_array();
 
-    Chunk chunk1({0, 0}, 1234);
-    chunk1.generate_blocks_from_seed();
-    chunk1.convert_to_mesh(texture_manager);
+    int seed = 2345;
+    int chunk_radius = 10;
+    std::vector<Chunk> chunks;
 
-    Chunk chunk2({0, 1}, 1234);
-    chunk2.generate_blocks_from_seed();
-    chunk2.convert_to_mesh(texture_manager);
+    for (int i = -chunk_radius; i <= chunk_radius; i++) {
+        for (int j = -chunk_radius; j <= chunk_radius; j++) {
+            chunks.emplace_back(glm::ivec2(i, j), seed);
+            chunks.back().generate_blocks_from_seed();
+            chunks.back().convert_to_mesh(texture_manager);
+        }
+    }
 
     physics_system = ECS.register_system<PhysicsSystem>();
     movement_system = ECS.register_system<MovementSystem>();
@@ -102,28 +106,18 @@ void ClientApplication::run() {
         glUseProgram(*program);
         glm::mat4 model(1.0f);
 
-        RenderCall call_1 = {
-            model,
-            chunk1.get_VAO(),
-            *program,
-            texture_manager.get_texture_unit(),
-            chunk1.get_num_vertices(),
-        };
-
-        model = glm::translate(model, {0.0f, 16.0f, 0.0f});
-        RenderCall call_2 = {
-            model,
-            chunk2.get_VAO(),
-            *program,
-            texture_manager.get_texture_unit(),
-            chunk2.get_num_vertices(),
-        };
+        for (const auto& chunk : chunks) {
+            render_queue.emplace_back(
+                glm::translate(model, chunk.to_world_pos(glm::vec3(0.0f))),
+                chunk.get_VAO(),
+                *program,
+                texture_manager.get_texture_unit(),
+                chunk.get_num_vertices()
+            );
+        }
 
         Shader::set_uniform(*program, "view", camera_system->view());
         Shader::set_uniform(*program, "projection", camera_system->projection());
-
-        render_queue.push_back(std::move(call_1));
-        render_queue.push_back(std::move(call_2));
 
         this->render();
         window->update();

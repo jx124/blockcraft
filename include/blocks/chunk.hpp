@@ -13,6 +13,7 @@ struct Vertex {
     float u{};
     float v{};
     int texture_index{};
+    int face{};
 };
 
 struct Mesh {
@@ -32,11 +33,11 @@ class Chunk {
 public:
     Chunk(glm::ivec2 chunk_coords, int seed);
 
-    glm::vec3 to_world_pos(glm::vec3 chunk_pos);
-    glm::vec3 to_chunk_pos(glm::vec3 world_pos);
+    glm::vec3 to_world_pos(glm::vec3 chunk_pos) const;
+    glm::vec3 to_chunk_pos(glm::vec3 world_pos) const;
 
     // TODO: change ordering of storage
-    size_t to_block_index(glm::vec3 world_pos);
+    size_t to_block_index(glm::vec3 world_pos) const;
     Block& get_block(glm::ivec3 chunk_pos);
 
     void generate_blocks_from_seed();
