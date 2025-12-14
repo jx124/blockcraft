@@ -45,7 +45,7 @@ void ClientApplication::run() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
 
-    GLuint voxel_shader = Shader::create("data/shaders/voxel.vert", "data/shaders/voxel.frag").value_or(0);
+    voxel_shader = Shader::create("data/shaders/voxel.vert", "data/shaders/voxel.frag").value_or(0);
     if (!voxel_shader) {
         return;
     }
@@ -56,9 +56,9 @@ void ClientApplication::run() {
     int chunk_radius = 8;
     ChunkManager chunk_manager(seed, chunk_radius);
 
-    physics_system = ECS.register_system<PhysicsSystem>();
+    PhysicsSystem* physics_system = ECS.register_system<PhysicsSystem>();
     movement_system = ECS.register_system<MovementSystem>();
-    camera_system = ECS.register_system<CameraSystem>();
+    CameraSystem* camera_system = ECS.register_system<CameraSystem>();
 
     ECS.add_components_to_system<PhysicsSystem, Transform, Velocity>();
     ECS.add_components_to_system<MovementSystem, Transform, Velocity, PlayerMovement>();
@@ -138,6 +138,16 @@ void ClientApplication::update() {
                 if (!cursor_disabled) {
                     movement_system->reset_first_mouse();
                 }
+                break;
+            case ApplicationEvent::Type::ReloadShaders:
+                std::optional<GLuint> new_shader = Shader::create("data/shaders/voxel.vert", "data/shaders/voxel.frag");
+                if (!voxel_shader) {
+                    log_error("Error reloading shaders");
+                    break;
+                }
+                log_debug("Reloading shaders");
+                glDeleteProgram(voxel_shader);
+                voxel_shader = *new_shader;
                 break;
         }
     }

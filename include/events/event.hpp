@@ -23,6 +23,7 @@ struct ApplicationEvent {
     enum class Type {
         CloseWindow,
         ToggleCursor,
+        ReloadShaders,
     } type{};
 };
 

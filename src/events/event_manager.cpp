@@ -48,6 +48,9 @@ void EventManager::queue_input_event(Event event) {
                 case GLFW_KEY_ESCAPE:
                     queue_event(Event::make_event(ApplicationEvent::Type::CloseWindow));
                     break;
+                case GLFW_KEY_R:
+                    queue_event(Event::make_event(ApplicationEvent::Type::ReloadShaders));
+                    break;
                 default:
                     break;
             }

@@ -42,12 +42,13 @@ private:
     float dt = 0.0f;
 
     EntityComponentSystem ECS{};
-    PhysicsSystem* physics_system{};
     MovementSystem* movement_system{};
-    CameraSystem* camera_system{};
     std::vector<RenderCall> render_queue{};
     EventManager event_manager{};
     std::queue<Event> events{};
+
+    // TODO: create shader manager
+    GLuint voxel_shader{};
 
     static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
     static void error_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
