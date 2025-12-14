@@ -38,6 +38,12 @@ public:
                 primary_camera->far_plane);
     }
 
+    glm::vec3 camera_position() const {
+        debug_assert(primary_camera && position && direction, "Did not register primary camera for camera position");
+
+        return *position;
+    }
+
 private:
     Camera* primary_camera{};
     glm::vec3* position{};

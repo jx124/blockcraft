@@ -1,12 +1,12 @@
-#include "blocks/chunk_manager.hpp"
-#include "texture_manager.hpp"
 #define GLAD_GL_IMPLEMENTATION
 #include "glad/gl.h"
 
 #include "app/client.hpp"
 
 #include "blocks/chunk.hpp"
+#include "blocks/chunk_manager.hpp"
 #include "graphics/shader.hpp"
+#include "graphics/texture_manager.hpp"
 #include "utils/logger.hpp"
 
 ClientApplication::ClientApplication(int width, int height) : width(width), height(height), window(nullptr) {
@@ -40,7 +40,7 @@ ClientApplication::~ClientApplication() {
 }
 
 void ClientApplication::run() {
-    glClearColor(0.4f, 0.75f, 0.9f, 0.0f);
+    glClearColor(0.4f, 0.75f, 0.9f, 1.0f);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
@@ -53,7 +53,7 @@ void ClientApplication::run() {
     TextureManager texture_manager;
 
     int seed = 2345;
-    int chunk_radius = 10;
+    int chunk_radius = 8;
     ChunkManager chunk_manager(seed, chunk_radius);
 
     physics_system = ECS.register_system<PhysicsSystem>();
@@ -103,6 +103,8 @@ void ClientApplication::run() {
 
         Shader::set_uniform(voxel_shader, "view", camera_system->view());
         Shader::set_uniform(voxel_shader, "projection", camera_system->projection());
+        Shader::set_uniform(voxel_shader, "cameraPos", camera_system->camera_position());
+        Shader::set_uniform(voxel_shader, "renderRadius", static_cast<float>(chunk_radius * CHUNK_LENGTH));
 
         this->render();
         window->update();

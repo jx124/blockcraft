@@ -17,21 +17,26 @@ public:
 
         for (int i = -chunk_radius - 2; i <= chunk_radius + 2; i++) {
             for (int j = -chunk_radius - 2; j <= chunk_radius + 2; j++) {
-                glm::ivec2 current_chunk(chunk_pos.x + i, chunk_pos.y + j);
 
-                if (glm::abs(i) + glm::abs(j) >= chunk_radius + 2) {
+                glm::ivec2 current_chunk(chunk_pos.x + i, chunk_pos.y + j);
+                int dist = glm::floor(glm::length(glm::vec2(i, j)));
+
+                // add chunk to unload queue if too far away
+                if (dist >= chunk_radius + 2) {
                     if (chunk_index_map.contains(current_chunk) && !unload_chunk_queue_set.contains(current_chunk)) {
                         unload_chunk_queue.push(current_chunk);
                         unload_chunk_queue_set.insert(current_chunk);
                     }
                     continue;
                 }
-                if (glm::abs(i) + glm::abs(j) > chunk_radius + 1 || glm::abs(i) > chunk_radius || glm::abs(j) > chunk_radius) {
+                if (dist > chunk_radius) {
                     continue;
                 }
+                // skip loading if chunk already loaded/in load queue
                 if (chunk_index_map.contains(current_chunk) || load_chunk_queue_set.contains(current_chunk)) {
                     continue;
                 }
+
                 load_chunk_queue.push(current_chunk);
                 load_chunk_queue_set.insert(current_chunk);
             }
