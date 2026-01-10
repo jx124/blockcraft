@@ -1,5 +1,7 @@
 #pragma once
 
+#include "graphics/common.hpp"
+
 struct Block {
     enum Type : int {
         AIR = 0,

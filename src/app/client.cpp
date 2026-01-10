@@ -59,20 +59,23 @@ void ClientApplication::run() {
     PhysicsSystem* physics_system = ECS.register_system<PhysicsSystem>();
     movement_system = ECS.register_system<MovementSystem>();
     CameraSystem* camera_system = ECS.register_system<CameraSystem>();
+    ActionSystem* action_system = ECS.register_system<ActionSystem>();
 
     ECS.add_components_to_system<PhysicsSystem, Transform, Velocity>();
     ECS.add_components_to_system<MovementSystem, Transform, Velocity, PlayerMovement>();
+    ECS.add_components_to_system<ActionSystem, Transform, PlayerAction>();
 
     EntityID player = ECS.create_entity().value();
     ECS.add_component_to_entity(player, Transform{{8.0f, 8.0f, 160.0f}, {}});
     ECS.add_component_to_entity(player, Velocity{});
     ECS.add_component_to_entity(player, PlayerMovement{});
+    ECS.add_component_to_entity(player, PlayerAction{});
     ECS.add_component_to_entity(player, Camera{});
 
     ECS.clear_unused_archetypes();
 
-    event_manager.subscribe_system_to_event<InputEvent>(physics_system);
     event_manager.subscribe_system_to_event<MovementEvent>(movement_system);
+    event_manager.subscribe_system_to_event<ActionEvent>(action_system);
 
     camera_system->register_primary_camera();
 
@@ -87,6 +90,12 @@ void ClientApplication::run() {
 
         chunk_manager.load_chunks(1, texture_manager);
         chunk_manager.unload_chunks(1);
+        chunk_manager.update_chunks(1, texture_manager);
+
+        if (frame_time >= 1.0f / BLOCKS_PER_SECOND) {
+            action_system->update(chunk_manager);
+            frame_time -= (1.0f / BLOCKS_PER_SECOND);
+        }
 
         glUseProgram(voxel_shader);
         glm::mat4 identity(1.0f);
@@ -121,6 +130,7 @@ void ClientApplication::update() {
 
     dt = (float)glfwGetTime() - previous_time;
     previous_time = (float)glfwGetTime();
+    frame_time += dt;
 
     while (!events.empty()) {
         Event event = std::move(events.front());
@@ -268,13 +278,13 @@ void ClientApplication::cursor_pos_callback(GLFWwindow* window, double x_pos, do
 }
 
 void ClientApplication::mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    (void)window, (void)button, (void)action, (void)mods;
-    log_debug("button: %d, action: %s", button,
-        action == GLFW_PRESS 
-            ? "press" 
-            : action == GLFW_RELEASE
-            ? "release"
-            : "repeat");
+   (void)mods;
+
+    ClientApplication* app_ptr = static_cast<ClientApplication*>(glfwGetWindowUserPointer(window));
+    app_ptr->event_manager.queue_input_event(
+            Event::make_event(action == GLFW_PRESS 
+                ? InputEvent::Type::MouseClick 
+                : InputEvent::Type::MouseRelease, button));
 }
 
 void ClientApplication::scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {

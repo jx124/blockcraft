@@ -30,6 +30,11 @@ struct PlayerMovement {
     bool landed{};
 };
 
+struct PlayerAction {
+    bool left_click{};
+    bool right_click{};
+};
+
 struct Camera {
     float field_of_view_y = glm::radians(45.0f);
     float aspect_ratio = 1920.0f / 1200.0f; // TODO: add resize event that changes the aspect ratio

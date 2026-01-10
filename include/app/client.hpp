@@ -16,6 +16,8 @@ struct RenderCall {
     size_t n_vertices;
 };
 
+constexpr float BLOCKS_PER_SECOND = 5.0f;
+
 class ClientApplication {
 public:
     ClientApplication(int width, int height);
@@ -40,6 +42,7 @@ private:
     bool cursor_disabled = true;
     float previous_time = 0.0f;
     float dt = 0.0f;
+    float frame_time = 0.0f;
 
     EntityComponentSystem ECS{};
     MovementSystem* movement_system{};

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "blocks/common.hpp"
+#include "graphics/common.hpp"
+
 #include <utility>
 #include <variant>
 
@@ -10,6 +13,7 @@ struct InputEvent {
         KeyRepeat,
         MouseMove,
         MouseClick,
+        MouseRelease,
     } type{};
 
     int key{};
@@ -45,7 +49,27 @@ struct MovementEvent {
     float y{};
 };
 
-using EventType = std::variant<InputEvent, ApplicationEvent, MovementEvent>;
+struct ActionEvent {
+    enum class Type {
+        StartLeftClick,
+        StopLeftClick,
+        StartRightClick,
+        StopRightClick,
+    } type{};
+};
+
+
+struct BlockEvent {
+    enum class Type {
+        Break,
+        Place,
+    } type{};
+
+    glm::vec3 pos{};
+    Block block{};
+};
+
+using EventType = std::variant<InputEvent, ApplicationEvent, MovementEvent, ActionEvent, BlockEvent>;
 
 class Event {
 public:

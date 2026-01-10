@@ -3,6 +3,7 @@
 #include "blocks/common.hpp"
 #include "graphics/common.hpp"
 #include "graphics/texture_manager.hpp"
+#include "logger.hpp"
 
 #include <vector>
 
@@ -28,6 +29,7 @@ constexpr int CHUNK_LENGTH = 16;
 constexpr int CHUNK_WIDTH = 16;
 constexpr int CHUNK_HEIGHT = 384;
 constexpr int BLOCKS_PER_CHUNK = CHUNK_LENGTH * CHUNK_WIDTH * CHUNK_HEIGHT;
+constexpr int VERTICES_PER_BLOCK = 6 * 6;
 
 class Chunk {
 public:
@@ -52,12 +54,11 @@ public:
     size_t get_num_vertices() const;
     glm::ivec2 get_chunk_coords() const;
 
+    void add_block(glm::vec3 world_pos, Block block);
+    void delete_block(glm::vec3 world_pos);
+
     // Delete the vertex array and buffer objects from the GPU.
-    void clear() {
-        glBindVertexArray(0);
-        glDeleteBuffers(1, &mesh.VBO);
-        glDeleteVertexArrays(1, &mesh.VAO);
-    }
+    void clear();
 
 private:
     // TODO: check neighboring blocks for face culling and set block type depending on face

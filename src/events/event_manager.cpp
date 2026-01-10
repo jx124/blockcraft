@@ -73,6 +73,28 @@ void EventManager::queue_input_event(Event event) {
             }
         } else if (input_event->type == InputEvent::Type::MouseMove) {
             queue_event(Event::make_event(MovementEvent::Type::Turn, input_event->x, input_event->y));
+        } else if (input_event->type == InputEvent::Type::MouseClick) {
+            switch (input_event->key) {
+                case GLFW_MOUSE_BUTTON_1:
+                    queue_event(Event::make_event(ActionEvent::Type::StartLeftClick));
+                    break;
+                case GLFW_MOUSE_BUTTON_2:
+                    queue_event(Event::make_event(ActionEvent::Type::StartRightClick));
+                    break;
+                default:
+                    break;
+            }
+        } else if (input_event->type == InputEvent::Type::MouseRelease) {
+            switch (input_event->key) {
+                case GLFW_MOUSE_BUTTON_1:
+                    queue_event(Event::make_event(ActionEvent::Type::StopLeftClick));
+                    break;
+                case GLFW_MOUSE_BUTTON_2:
+                    queue_event(Event::make_event(ActionEvent::Type::StopRightClick));
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 #include "blocks/chunk.hpp"
 
 #include "glm/gtc/noise.hpp"
+#include "logger.hpp"
 
 bool Block::is_transparent(Block block) {
     // TODO: use a map
@@ -28,6 +29,9 @@ Chunk::Chunk(glm::ivec2 chunk_coords, int seed)
     glEnableVertexAttribArray(2);
     glVertexAttribIPointer(3, 1, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, face));
     glEnableVertexAttribArray(3);
+
+    glBufferData(GL_ARRAY_BUFFER, BLOCKS_PER_CHUNK * sizeof(Vertex), nullptr, GL_STATIC_DRAW);
+    log_debug("Allocating %d bytes on GPU", BLOCKS_PER_CHUNK * sizeof(Vertex));
 };
 
 glm::vec3 Chunk::to_world_pos(glm::vec3 chunk_pos) const {
@@ -79,6 +83,8 @@ void Chunk::generate_blocks_from_seed() {
 }
 
 void Chunk::convert_to_mesh(const TextureManager& texture_manager) {
+    quads.clear();
+    mesh.vertices.clear();
     convert_to_quads();
 
     for (const VoxelQuad& quad : quads) {
@@ -87,7 +93,10 @@ void Chunk::convert_to_mesh(const TextureManager& texture_manager) {
                 
     // TODO: separate out into a different function so we can do the conversion on different threads but only
     // send the mesh to the GPU on the main OpenGL thread.
-    glBufferData(GL_ARRAY_BUFFER, mesh.vertices.size() * sizeof(Vertex), mesh.vertices.data(), GL_STATIC_DRAW);
+    glBindVertexArray(mesh.VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, mesh.vertices.size() * sizeof(Vertex), mesh.vertices.data());
+    log_debug("Substituting %d bytes on GPU", mesh.vertices.size() * sizeof(Vertex));
 }
 
 void Chunk::convert_to_quads() {
@@ -204,4 +213,22 @@ size_t Chunk::get_num_vertices() const {
 
 glm::ivec2 Chunk::get_chunk_coords() const {
     return chunk_coords;
+}
+
+void Chunk::add_block(glm::vec3 world_pos, Block block) {
+    size_t index = to_block_index(world_pos);
+    blocks[index] = block;
+    log_debug("Adding block %d", blocks[index].type);
+}
+
+void Chunk::delete_block(glm::vec3 world_pos) {
+    size_t index = to_block_index(world_pos);
+    log_debug("Deleting block %d", blocks[index].type);
+    blocks[index] = { Block::Type::AIR };
+}
+
+void Chunk::clear() {
+    glBindVertexArray(0);
+    glDeleteBuffers(1, &mesh.VBO);
+    glDeleteVertexArrays(1, &mesh.VAO);
 }
