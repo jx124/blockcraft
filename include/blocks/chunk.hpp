@@ -3,22 +3,33 @@
 #include "blocks/common.hpp"
 #include "graphics/common.hpp"
 #include "graphics/texture_manager.hpp"
-#include "logger.hpp"
 
 #include <vector>
 
 struct Vertex {
-    float x{};
-    float y{};
-    float z{};
-    float u{};
-    float v{};
-    int texture_index{};
-    int face{};
+    int x{};             // 5 bits
+    int y{};             // 5 bits
+    int z{};             // 9 bits
+    int u{};             // 1 bit
+    int v{};             // 1 bit
+    int texture_index{}; // 8 bits
+    int face{};          // 3 bits
+
+    uint32_t pack_data() {
+        uint32_t data{};
+        data |= ((x & 0b11111) << 27);
+        data |= ((y & 0b11111) << 22);
+        data |= ((z & 0b111111111) << 13);
+        data |= ((u & 0b1) << 12);
+        data |= ((v & 0b1) << 11);
+        data |= ((texture_index & 0b11111111) << 3);
+        data |= ((face & 0b111) << 0);
+        return data;
+    }
 };
 
 struct Mesh {
-    std::vector<Vertex> vertices{};
+    std::vector<uint32_t> vertices{};
     GLuint VAO{};
     GLuint VBO{};
     GLuint shader_id{};
