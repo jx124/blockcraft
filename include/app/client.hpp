@@ -53,6 +53,10 @@ private:
     // TODO: create shader manager
     GLuint voxel_shader{};
 
+    // TODO: Add layers
+    GLuint HUD_VAO{};
+    GLuint HUD_VBO{};
+
     static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
     static void error_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
     static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);

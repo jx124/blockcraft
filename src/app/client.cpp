@@ -79,6 +79,29 @@ void ClientApplication::run() {
 
     camera_system->register_primary_camera();
 
+    // Crosshair
+    float aspect = (float)this->width / this->height;
+    float size = 0.03f;
+    float crosshair[8] = {
+        -size / aspect,  0.0f,
+        size / aspect,  0.0f,
+        0.0f,  -size,
+        0.0f,  size,
+    };
+
+    glGenVertexArrays(1, &this->HUD_VAO);
+    glBindVertexArray(this->HUD_VAO);
+    glGenBuffers(1, &this->HUD_VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, this->HUD_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(crosshair), crosshair, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    GLuint hud_shader = Shader::create("data/shaders/hud.vert", "data/shaders/hud.frag").value_or(0);
+    if (!hud_shader) {
+        return;
+    }
+
     while (!should_close) {
         glfwPollEvents();
 
@@ -116,6 +139,12 @@ void ClientApplication::run() {
         Shader::set_uniform(voxel_shader, "renderRadius", static_cast<float>(chunk_radius * CHUNK_LENGTH));
 
         this->render();
+
+        glBindVertexArray(this->HUD_VAO);
+        glUseProgram(hud_shader);
+        glLineWidth(3.0f);
+        glDrawArrays(GL_LINES, 0, 4);
+
         window->update();
 
         if (window->should_close()) {
@@ -196,9 +225,9 @@ void ClientApplication::error_message_callback(GLenum source, GLenum type, GLuin
         GLsizei length, const GLchar* message, const void* userParam) {
 
     (void) id, (void) length, (void) userParam;
-    const char* source_str;
-    const char* type_str;
-    const char* severity_str;
+    const char* source_str = nullptr;
+    const char* type_str = nullptr;
+    const char* severity_str = nullptr;
 
     switch (source) {
         case GL_DEBUG_SOURCE_API:
@@ -247,6 +276,8 @@ void ClientApplication::error_message_callback(GLenum source, GLenum type, GLuin
         case GL_DEBUG_SEVERITY_NOTIFICATION:
             severity_str = "Notification";
             break;
+        default:
+            type_str = "Other";
     }
 
     if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
