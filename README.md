@@ -5,6 +5,8 @@ This is my attempt at making a multiplayer Minecraft clone to learn more about c
 
 ## Quick Start
 On Linux:
+- Install GLFW dependencies for your system: https://www.glfw.org/docs/latest/compile.html#compile_deps_wayland
+- Install CMake and Jinja2 build system.
 - Run `chmod +x ./build.sh` to add execution permissions to the build script.
 - Run `./build.sh -r` to build the game in release mode (use `-d` instead for debug mode).
 - Run the executable in the directory `./build/release/` (or `./build/debug`).
