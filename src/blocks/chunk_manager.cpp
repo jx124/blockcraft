@@ -137,22 +137,21 @@ std::vector<Chunk>& ChunkManager::get_chunks() {
     return loaded_chunks;
 }
 
-// Set get_adjacent to true to get the adjacent block on the face of the hit block: used for placing blocks
+// Based on the Amanatides & Woo ray marching algorithm http://www.cse.yorku.ca/~amana/research/grid.pdf
+// Set get_adjacent to true to get the adjacent block on the face of the hit block; useful for placing blocks
 std::optional<glm::vec3> ChunkManager::cast_ray(glm::vec3 position, glm::vec3 direction, bool get_adjacent) {
-    glm::vec3 signs(direction.x > 0.0f ? 1.0f : -1.0f, direction.y > 0.0f ? 1.0f : -1.0f, direction.z > 0.0f ? 1.0f : -1.0f);
-    glm::vec3 reciprocals = 1.0f / glm::abs(direction);
+    glm::vec3 step = glm::sign(direction);
+    glm::vec3 t_delta = 1.0f / glm::abs(direction);
     glm::vec3 voxel_pos = glm::floor(position);
-    glm::vec3 distances = (signs + 1.0f)/2.0f - (position - voxel_pos) / direction;
+    glm::vec3 next_boundary = voxel_pos + (step + 1.0f) / 2.0f;
+    glm::vec3 t_max = (next_boundary - position) / direction;
 
-    while (glm::distance(position, voxel_pos) < 10.0f) {
-        float min_dist = glm::min(distances.x, glm::min(distances.y, distances.z));
-        int min_axis = distances.x == min_dist
-            ? 0
-            : distances.y == min_dist
-            ? 1
-            : 2;
+    int min_axis = t_max.x < t_max.y
+        ? (t_max.x < t_max.z ? 0 : 2)
+        : (t_max.y < t_max.z ? 1 : 2);
+    float t = 0.0f;
 
-        voxel_pos[min_axis] += signs[min_axis];
+    while (t < 10.0f) {
         glm::ivec2 chunk_pos = glm::floor(glm::vec2(voxel_pos.x / CHUNK_LENGTH, voxel_pos.y / CHUNK_WIDTH));
         if (!chunk_index_map.contains(chunk_pos)) {
             log_error("Raycasting accessed unloaded chunk");
@@ -164,13 +163,21 @@ std::optional<glm::vec3> ChunkManager::cast_ray(glm::vec3 position, glm::vec3 di
 
         if (hit_block.type != Block::Type::AIR) {
             if (get_adjacent) {
-                voxel_pos[min_axis] -= signs[min_axis];
+                voxel_pos[min_axis] -= step[min_axis];
                 return voxel_pos;
             }
             return voxel_pos;
         }
-        distances[min_axis] += reciprocals[min_axis];
+
+        min_axis = t_max.x < t_max.y
+            ? (t_max.x < t_max.z ? 0 : 2)
+            : (t_max.y < t_max.z ? 1 : 2);
+
+        voxel_pos[min_axis] += step[min_axis];
+        t = t_max[min_axis];
+        t_max[min_axis] += t_delta[min_axis];
     }
+
     return std::nullopt;
 }
 
