@@ -10,3 +10,11 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/hash.hpp"
+
+struct RenderCall {
+    glm::mat4 transform;
+    GLuint VAO;
+    GLuint shader_id;
+    GLuint texture_unit;
+    size_t n_vertices;
+};

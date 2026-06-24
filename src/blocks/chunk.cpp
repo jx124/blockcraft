@@ -1,5 +1,6 @@
 #include "blocks/chunk.hpp"
 
+#include "blocks/common.hpp"
 #include "glm/gtc/noise.hpp"
 #include "logger.hpp"
 

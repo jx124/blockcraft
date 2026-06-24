@@ -6,10 +6,13 @@
 #include "blocks/chunk.hpp"
 #include "blocks/chunk_manager.hpp"
 #include "graphics/shader.hpp"
+#include "graphics/shadow_map.hpp"
 #include "graphics/texture_manager.hpp"
 #include "utils/logger.hpp"
 
-ClientApplication::ClientApplication(int width, int height) : width(width), height(height), window(nullptr) {
+ClientApplication::ClientApplication(int width, int height)
+    : width(width), height(height), window(nullptr)
+{
     if (!glfwInit()) {
         throw std::runtime_error("[ClientApplication] Cannot initialize GLFW");
     }
@@ -53,12 +56,12 @@ void ClientApplication::run() {
     TextureManager texture_manager;
 
     int seed = 2345;
-    int chunk_radius = 8;
+    chunk_radius = 8;
     ChunkManager chunk_manager(seed, chunk_radius);
 
     PhysicsSystem* physics_system = ECS.register_system<PhysicsSystem>();
     movement_system = ECS.register_system<MovementSystem>();
-    CameraSystem* camera_system = ECS.register_system<CameraSystem>();
+    camera_system = ECS.register_system<CameraSystem>();
     ActionSystem* action_system = ECS.register_system<ActionSystem>();
 
     ECS.add_components_to_system<PhysicsSystem, Transform, Velocity>();
@@ -102,6 +105,8 @@ void ClientApplication::run() {
         return;
     }
 
+    shadow_map = std::make_unique<ShadowMap>(SHADOW_WIDTH, SHADOW_HEIGHT);
+
     while (!should_close) {
         glfwPollEvents();
 
@@ -133,12 +138,9 @@ void ClientApplication::run() {
             );
         }
 
-        Shader::set_uniform(voxel_shader, "view", camera_system->view());
-        Shader::set_uniform(voxel_shader, "projection", camera_system->projection());
-        Shader::set_uniform(voxel_shader, "cameraPos", camera_system->camera_position());
-        Shader::set_uniform(voxel_shader, "renderRadius", static_cast<float>(chunk_radius * CHUNK_LENGTH));
-
+        shadow_map->shadow_pass(camera_system, render_queue);
         this->render();
+        render_queue.clear();
 
         glBindVertexArray(this->HUD_VAO);
         glUseProgram(hud_shader);
@@ -194,6 +196,18 @@ void ClientApplication::update() {
 
 // TODO: add layers
 void ClientApplication::render() {
+    glm::mat4 light_space_matrix = shadow_map->light_proj * shadow_map->light_view;
+
+    glViewport(0, 0, width, height);
+    glUseProgram(voxel_shader);
+    Shader::set_uniform(voxel_shader, "view", camera_system->view());
+    Shader::set_uniform(voxel_shader, "projection", camera_system->projection());
+    Shader::set_uniform(voxel_shader, "lightSpaceMatrix", light_space_matrix);
+    Shader::set_uniform(voxel_shader, "cameraPos", camera_system->camera_position());
+    Shader::set_uniform(voxel_shader, "renderRadius", static_cast<float>(chunk_radius * CHUNK_LENGTH));
+    Shader::set_uniform(voxel_shader, "depthMap", (int)shadow_map->get_unit());
+    Shader::set_uniform(voxel_shader, "lightPos", shadow_map->light_pos);
+
     for (const RenderCall& render_call : render_queue) {
         glUseProgram(render_call.shader_id);
         Shader::set_uniform(render_call.shader_id, "textureId", (int)render_call.texture_unit);
@@ -202,7 +216,6 @@ void ClientApplication::render() {
         glBindVertexArray(render_call.VAO);
         glDrawArrays(GL_TRIANGLES, 0, render_call.n_vertices);
     }
-    render_queue.clear();
 }
 
 // TODO: save data to disk
@@ -214,7 +227,7 @@ void ClientApplication::framebuffer_size_callback(GLFWwindow* window, int width,
     ClientApplication* app_ptr = static_cast<ClientApplication*>(glfwGetWindowUserPointer(window));
 
     app_ptr->width = width;
-    app_ptr->height= height;
+    app_ptr->height = height;
     app_ptr->window->width = width;
     app_ptr->window->height= height;
 

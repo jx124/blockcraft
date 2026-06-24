@@ -23,12 +23,11 @@ public:
     GLuint get_id() const;
     GLuint get_unit() const;
 
+    // Global variable keeping track of which texture units have been used.
+    // Increment after every call to glActiveTexture.
+    static inline GLuint n_textures = 0;
 private:
     GLuint id{};
     int unit;
     GLenum target;
-
-    // Global variable keeping track of which texture units have been used.
-    // Increment after every call to glActiveTexture.
-    static inline GLuint n_textures = 0;
 };
