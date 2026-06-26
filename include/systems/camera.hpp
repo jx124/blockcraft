@@ -38,6 +38,27 @@ public:
                 primary_camera->far_plane);
     }
 
+    glm::mat4 projection(float near_plane, float far_plane) const {
+        debug_assert(primary_camera && position && direction, "Did not register primary camera for projection matrix");
+
+        return glm::perspective(primary_camera->field_of_view_y,
+                primary_camera->aspect_ratio,
+                near_plane,
+                far_plane);
+    }
+
+    float near_plane() const {
+        debug_assert(primary_camera && position && direction, "Did not register primary camera for camera near plane");
+
+        return primary_camera->near_plane;
+    }
+
+    float far_plane() const {
+        debug_assert(primary_camera && position && direction, "Did not register primary camera for camera far plane");
+
+        return primary_camera->far_plane;
+    }
+
     glm::vec3 camera_position() const {
         debug_assert(primary_camera && position && direction, "Did not register primary camera for camera position");
 

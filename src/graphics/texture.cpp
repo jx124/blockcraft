@@ -45,7 +45,7 @@ Texture::Texture(const std::vector<ImageData>& image_data, GLenum target = GL_TE
     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    
+
     // allocate enough space for 2d texture array
     glTexStorage3D(target, 3, GL_RGBA8, width, height, image_data.size());
 

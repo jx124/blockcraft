@@ -105,7 +105,7 @@ void ClientApplication::run() {
         return;
     }
 
-    shadow_map = std::make_unique<ShadowMap>(SHADOW_WIDTH, SHADOW_HEIGHT);
+    shadow_map = std::make_unique<ShadowMap>(SHADOW_WIDTH, SHADOW_HEIGHT, camera_system);
 
     while (!should_close) {
         glfwPollEvents();
@@ -137,8 +137,9 @@ void ClientApplication::run() {
                 chunk.get_num_vertices()
             );
         }
-
-        shadow_map->shadow_pass(camera_system, render_queue);
+        //glm::mat4 rotation = glm::rotate(identity, (float)glfwGetTime() * 0.2f, glm::vec3(0.0f, 1.0f, 0.0f));
+        //shadow_map->light_pos = rotation * glm::vec4(0.1f, 0.2f, 0.7f, 1.0f);
+        shadow_map->shadow_pass(render_queue);
         this->render();
         render_queue.clear();
 
@@ -196,13 +197,10 @@ void ClientApplication::update() {
 
 // TODO: add layers
 void ClientApplication::render() {
-    glm::mat4 light_space_matrix = shadow_map->light_proj * shadow_map->light_view;
-
     glViewport(0, 0, width, height);
     glUseProgram(voxel_shader);
     Shader::set_uniform(voxel_shader, "view", camera_system->view());
     Shader::set_uniform(voxel_shader, "projection", camera_system->projection());
-    Shader::set_uniform(voxel_shader, "lightSpaceMatrix", light_space_matrix);
     Shader::set_uniform(voxel_shader, "cameraPos", camera_system->camera_position());
     Shader::set_uniform(voxel_shader, "renderRadius", static_cast<float>(chunk_radius * CHUNK_LENGTH));
     Shader::set_uniform(voxel_shader, "depthMap", (int)shadow_map->get_unit());

@@ -2,8 +2,6 @@
 layout (location = 0) in uint vData;
 
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
 
 void main()
 {
@@ -15,5 +13,5 @@ void main()
     int v = int((vData >> 11) & 0x1);
     vec4 vPos = vec4(x, y, z, 1.0);
 
-    gl_Position = projection * view * model * vPos;
+    gl_Position = model * vPos;
 }

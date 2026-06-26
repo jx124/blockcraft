@@ -36,6 +36,42 @@ std::optional<GLuint> Shader::create(const std::filesystem::path& vertex_path, c
     }
 }
 
+std::optional<GLuint> Shader::create(const std::filesystem::path& vertex_path,
+                                     const std::filesystem::path& fragment_path,
+                                     const std::filesystem::path& geometry_path) {
+    std::optional<std::string> vertex_source = Shader::parse_file(vertex_path);
+    std::optional<std::string> fragment_source = Shader::parse_file(fragment_path);
+    std::optional<std::string> geometry_source = Shader::parse_file(geometry_path);
+
+    if (!vertex_source || !fragment_source || !geometry_source) {
+        return std::nullopt;
+    }
+
+    std::optional<GLuint> vertex_shader = Shader::compile(*vertex_source, Shader::Type::Vertex);
+    std::optional<GLuint> fragment_shader = Shader::compile(*fragment_source, Shader::Type::Fragment);
+    std::optional<GLuint> geometry_shader = Shader::compile(*geometry_source, Shader::Type::Geometry);
+
+    if (!vertex_shader || !fragment_shader || !geometry_shader) {
+        return std::nullopt;
+    }
+
+    GLuint program_id = glCreateProgram();
+    bool success = Shader::link(program_id, *vertex_shader, *fragment_shader, *geometry_shader);
+
+    glDetachShader(program_id, *vertex_shader);
+    glDetachShader(program_id, *fragment_shader);
+    glDetachShader(program_id, *geometry_shader);
+    glDeleteShader(*vertex_shader);
+    glDeleteShader(*fragment_shader);
+    glDeleteShader(*geometry_shader);
+
+    if (success) {
+        return { program_id };
+    } else {
+        return std::nullopt;
+    }
+}
+
 std::optional<std::string> Shader::parse_file(const std::filesystem::path& file_path) {
     std::ifstream file{ file_path };
 
@@ -44,7 +80,7 @@ std::optional<std::string> Shader::parse_file(const std::filesystem::path& file_
         return std::nullopt;
     }
 
-    std::stringstream file_stream;
+    std::stringstream file_stream{};
 
     file_stream << file.rdbuf();
     file.close();
@@ -63,11 +99,11 @@ std::optional<GLuint> Shader::compile(const std::string& source, Shader::Type ty
     glShaderSource(shader, 1, &source_c_str, nullptr);
     glCompileShader(shader);
 
-    int success;
+    int success{};
     char log[512];
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 
-    const char* shader_type_name;
+    const char* shader_type_name{};
     switch (type) {
         case Shader::Type::Vertex:
             shader_type_name = "vertex";
@@ -94,10 +130,29 @@ bool Shader::link(GLuint program_id, GLuint vertex_shader, GLuint fragment_shade
     glAttachShader(program_id, fragment_shader);
     glLinkProgram(program_id);
 
-    int success;
+    int success{};
     char log[512];
     glGetProgramiv(program_id, GL_LINK_STATUS, &success);
-    
+
+    if (!success) {
+        glGetProgramInfoLog(program_id, 512, NULL, log);
+        log_error("Error linking shader:\n%s", log);
+        return false;
+    }
+
+    return true;
+}
+
+bool Shader::link(GLuint program_id, GLuint vertex_shader, GLuint fragment_shader, GLuint geometry_shader) {
+    glAttachShader(program_id, vertex_shader);
+    glAttachShader(program_id, fragment_shader);
+    glAttachShader(program_id, geometry_shader);
+    glLinkProgram(program_id);
+
+    int success{};
+    char log[512];
+    glGetProgramiv(program_id, GL_LINK_STATUS, &success);
+
     if (!success) {
         glGetProgramInfoLog(program_id, 512, NULL, log);
         log_error("Error linking shader:\n%s", log);

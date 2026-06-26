@@ -4,14 +4,13 @@ layout (location = 0) in uint vData;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-uniform mat4 lightSpaceMatrix;
 uniform vec3 cameraPos;
 
 out vec2 texCoord;
 flat out int textureIndex;
 flat out int face;
 out vec4 worldDistance;
-out vec4 fragPosLightSpace;
+out vec4 fragPosWorldSpace;
 
 void main() {
     // unpack data
@@ -30,6 +29,6 @@ void main() {
     textureIndex = texture_index;
     face = vFace;
     worldDistance = vec4(cameraPos, 1.0) - modelPos;
-    fragPosLightSpace = lightSpaceMatrix * modelPos;
+    fragPosWorldSpace = modelPos;
 }
 

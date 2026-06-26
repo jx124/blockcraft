@@ -15,6 +15,9 @@ public:
     };
 
     static std::optional<GLuint> create(const std::filesystem::path& vertex_path, const std::filesystem::path& fragment_path);
+    static std::optional<GLuint> create(const std::filesystem::path& vertex_path,
+                                        const std::filesystem::path& fragment_path,
+                                        const std::filesystem::path& geometry_path);
 
     static void set_uniform(GLuint program_id, const std::string& name, bool value);
     static void set_uniform(GLuint program_id, const std::string& name, int value);
@@ -30,4 +33,5 @@ private:
     static std::optional<std::string> parse_file(const std::filesystem::path& file_path);
     static std::optional<GLuint> compile(const std::string& source, Shader::Type type);
     static bool link(GLuint program_id, GLuint vertex_shader, GLuint fragment_shader);
+    static bool link(GLuint program_id, GLuint vertex_shader, GLuint fragment_shader, GLuint geometry_shader);
 };
