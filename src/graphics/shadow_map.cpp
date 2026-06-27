@@ -76,14 +76,11 @@ void ShadowMap::shadow_pass(const std::vector<RenderCall>& render_queue) {
     }
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    // change to front face culling to reduce peter-panning effect, then render depth map
-    glCullFace(GL_FRONT);
     for (const RenderCall& render_call : render_queue) {
         Shader::set_uniform(depth_shader, "model", render_call.transform);
         glBindVertexArray(render_call.VAO);
         glDrawArrays(GL_TRIANGLES, 0, render_call.n_vertices);
     }
-    glCullFace(GL_BACK);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -139,7 +136,7 @@ glm::mat4 ShadowMap::get_light_matrix(float near_plane, float far_plane) const {
     }
 
     // allow geometry beyond frustum to cast shadows
-    constexpr float x_mult = 5.0f;
+    constexpr float x_mult = 2.0f;
     if (min_x < 0) {
         min_x *= x_mult;
     } else {
@@ -150,7 +147,7 @@ glm::mat4 ShadowMap::get_light_matrix(float near_plane, float far_plane) const {
     } else {
         max_x *= x_mult;
     }
-    constexpr float y_mult = 5.0f;
+    constexpr float y_mult = 2.0f;
     if (min_y < 0) {
         min_y *= y_mult;
     } else {

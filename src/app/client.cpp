@@ -47,6 +47,8 @@ void ClientApplication::run() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 
     voxel_shader = Shader::create("data/shaders/voxel.vert", "data/shaders/voxel.frag").value_or(0);
     if (!voxel_shader) {
@@ -107,6 +109,10 @@ void ClientApplication::run() {
 
     shadow_map = std::make_unique<ShadowMap>(SHADOW_WIDTH, SHADOW_HEIGHT, camera_system);
 
+    chunk_manager.update({8.0f, 8.0f, 160.0f});
+    chunk_manager.load_chunks(10000);
+    chunk_manager.mesh_chunks(10000, texture_manager);
+
     while (!should_close) {
         glfwPollEvents();
 
@@ -116,9 +122,9 @@ void ClientApplication::run() {
         movement_system->update(dt, chunk_manager);
         physics_system->update(dt);
 
-        chunk_manager.load_chunks(1, texture_manager);
+        chunk_manager.load_chunks(1);
         chunk_manager.unload_chunks(1);
-        chunk_manager.update_chunks(1, texture_manager);
+        chunk_manager.mesh_chunks(5, texture_manager);
 
         if (frame_time >= 1.0f / BLOCKS_PER_SECOND) {
             action_system->update(chunk_manager);

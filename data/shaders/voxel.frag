@@ -95,7 +95,10 @@ void main() {
 
     vec4 frag_pos_light_space = lightSpaceMatrices[layer] * fragPosWorldSpace;
     float shadow_factor = shadow_calculation(frag_pos_light_space, face, layer);
-    vec4 light = vec4(vec3(light_array[face] * mix(1.0f, 0.6f, shadow_factor)), 1.0f);
+
+    float ambient = 0.8f * light_array[face];
+    float diffuse = dot(normals[face], normalize(lightPos));
+    vec4 light = vec4(vec3(ambient + diffuse * mix(1.0f, 0.1f, shadow_factor)), 1.0f);
     vec4 fog_color = vec4(0.4f, 0.75f, 0.9f, 1.0f);
 
     fragment = mix(light * texture(textureId, vec3(texCoord, textureIndex)), fog_color, fog_factor(worldDistance));

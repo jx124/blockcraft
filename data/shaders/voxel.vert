@@ -16,11 +16,12 @@ void main() {
     // unpack data
     int x = int((vData >> 27) & 0x1F);
     int y = int((vData >> 22) & 0x1F);
-    int z = int((vData >> 13) & 0x1FF);
-    int u = int((vData >> 12) & 0x1);
-    int v = int((vData >> 11) & 0x1);
-    int texture_index = int((vData >> 3) & 0xFF);
-    int vFace = int((vData >> 0) & 0x7);
+    int z = int((vData >> 14) & 0xFF);
+    int u = int((vData >> 13) & 0x1);
+    int v = int((vData >> 12) & 0x1);
+    int texture_index = int((vData >> 5) & 0x7F);
+    int vFace = int((vData >> 2) & 0x7);
+    int ambient_occlusion = int(vData & 0x3);
 
     vec4 modelPos = model * vec4(x, y, z, 1.0);
 

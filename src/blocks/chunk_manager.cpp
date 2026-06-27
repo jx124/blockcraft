@@ -1,4 +1,5 @@
 #include "blocks/chunk_manager.hpp"
+#include "blocks/chunk.hpp"
 #include "utils/logger.hpp"
 
 ChunkManager::ChunkManager(int seed, int chunk_radius) : seed(seed), chunk_radius(chunk_radius) {}
@@ -58,33 +59,65 @@ void ChunkManager::update(glm::vec3 player_pos) {
                     break;
             }
 
-            if (!update_chunk_queue_set.contains(chunk_pos)) {
-                update_chunk_queue.push(chunk_pos);
+            glm::ivec3 in_chunk_pos = glm::floor(Chunk::to_chunk_pos(block_pos));
+            if (in_chunk_pos.x == 0 && in_chunk_pos.y == 0) {
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, -1));
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(-1, -1));
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(-1, 0));
+            } else if (in_chunk_pos.x == 0 && in_chunk_pos.y == CHUNK_WIDTH - 1) {
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(-1, 0));
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(-1, 1));
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, 1));
+            } else if (in_chunk_pos.x == CHUNK_LENGTH - 1 && in_chunk_pos.y == CHUNK_WIDTH - 1) {
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, 1));
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(1, 1));
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(1, 0));
+            } else if (in_chunk_pos.x == CHUNK_LENGTH - 1 && in_chunk_pos.y == 0) {
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(1, 0));
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(1, -1));
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, -1));
+            } else if (in_chunk_pos.x == 0) {
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(-1, 0));
+            } else if (in_chunk_pos.y == CHUNK_WIDTH - 1) {
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, 1));
+            } else if (in_chunk_pos.x == CHUNK_LENGTH - 1) {
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(1, 0));
+            } else if (in_chunk_pos.y == 0) {
+                mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, -1));
             }
+            mesh_chunk_queue.push(chunk_pos);
         }
     }
 }
 
-void ChunkManager::load_chunks(int num_chunks, TextureManager& texture_manager) {
+// Generates a Chunk object and loads its blocks
+void ChunkManager::load_chunks(int num_chunks) {
     for (int i = 0; i < num_chunks; i++) {
         if (load_chunk_queue.empty()) {
             break;
         }
 
         glm::ivec2 chunk_pos = load_chunk_queue.front();
+        log_debug("Loading chunk %d, %d", chunk_pos.x, chunk_pos.y);
         load_chunk_queue.pop();
         load_chunk_queue_set.erase(chunk_pos);
 
         Chunk current_chunk(chunk_pos, seed);
         current_chunk.generate_blocks_from_seed();
-        current_chunk.convert_to_mesh(texture_manager);
 
         size_t current_index = loaded_chunks.size();
         loaded_chunks.push_back(std::move(current_chunk));
         chunk_index_map.insert({chunk_pos, current_index});
+
+        mesh_chunk_queue.push(chunk_pos + glm::ivec2(-1, 0));
+        mesh_chunk_queue.push(chunk_pos + glm::ivec2(1, 0));
+        mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, -1));
+        mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, 1));
+        mesh_chunk_queue.push(chunk_pos);
     }
 }
 
+// Unloads a Chunk object and deletes it from the GPU
 void ChunkManager::unload_chunks(int num_chunks) {
     for (int i = 0; i < num_chunks; i++) {
         if (unload_chunk_queue.empty()) {
@@ -117,19 +150,22 @@ void ChunkManager::unload_chunks(int num_chunks) {
     }
 }
 
-void ChunkManager::update_chunks(int num_chunks, TextureManager& texture_manager) {
+void ChunkManager::mesh_chunks(int num_chunks, TextureManager& texture_manager) {
     for (int i = 0; i < num_chunks; i++) {
-        if (update_chunk_queue.empty()) {
+        if (mesh_chunk_queue.empty()) {
             break;
         }
 
-        glm::ivec2 chunk_pos = update_chunk_queue.front();
-        update_chunk_queue.pop();
-        update_chunk_queue_set.erase(chunk_pos);
+        glm::ivec2 chunk_pos = mesh_chunk_queue.front();
+        log_debug("Meshing chunk %d, %d", chunk_pos.x, chunk_pos.y);
+        mesh_chunk_queue.pop();
 
-        log_debug("Updating chunk %d, %d", chunk_pos.x, chunk_pos.y);
+        if (!chunk_index_map.contains(chunk_pos)) {
+            continue;
+        }
+
         Chunk& chunk = loaded_chunks[chunk_index_map.at(chunk_pos)];
-        chunk.convert_to_mesh(texture_manager);
+        chunk.convert_to_mesh(texture_manager, loaded_chunks, chunk_index_map);
     }
 }
 

@@ -12,9 +12,9 @@ public:
 
     // Given the current player position, determine which chunks to load/unload
     void update(glm::vec3 player_pos);
-    void load_chunks(int num_chunks, TextureManager& texture_manager);
+    void load_chunks(int num_chunks);
     void unload_chunks(int num_chunks);
-    void update_chunks(int num_chunks, TextureManager& texture_manager);
+    void mesh_chunks(int num_chunks, TextureManager& texture_manager);
     std::vector<Chunk>& get_chunks();
 
     // Set get_adjacent to true to get the adjacent block on the face of the hit block: used for placing blocks
@@ -31,11 +31,10 @@ private:
 
     std::unordered_set<glm::ivec2> load_chunk_queue_set{};
     std::unordered_set<glm::ivec2> unload_chunk_queue_set{};
-    std::unordered_set<glm::ivec2> update_chunk_queue_set{};
 
     std::queue<glm::ivec2> load_chunk_queue{};
     std::queue<glm::ivec2> unload_chunk_queue{};
-    std::queue<glm::ivec2> update_chunk_queue{};
+    std::queue<glm::ivec2> mesh_chunk_queue{};
 
     std::queue<Event> events{};
 };

@@ -47,6 +47,11 @@ Block& Chunk::get_block(glm::ivec3 chunk_pos) {
     return blocks[index];
 }
 
+Block Chunk::get_block_copy(glm::ivec3 chunk_pos) const {
+    size_t index = CHUNK_LENGTH * CHUNK_WIDTH * chunk_pos.z + CHUNK_LENGTH * chunk_pos.y + chunk_pos.x;
+    return blocks[index];
+}
+
 void Chunk::generate_blocks_from_seed() {
     for (int i = 0; i < CHUNK_LENGTH; i++) {
         for (int j = 0; j < CHUNK_WIDTH; j++) {
@@ -75,15 +80,17 @@ void Chunk::generate_blocks_from_seed() {
     }
 }
 
-void Chunk::convert_to_mesh(const TextureManager& texture_manager) {
+void Chunk::convert_to_mesh(const TextureManager& texture_manager,
+                            const std::vector<Chunk>& loaded_chunks,
+                            const std::unordered_map<glm::ivec2, size_t>& chunk_index_map) {
     quads.clear();
     mesh.vertices.clear();
-    convert_to_quads();
+    convert_to_quads(loaded_chunks, chunk_index_map);
 
     for (const VoxelQuad& quad : quads) {
         generate_vertex_data(quad, texture_manager);
     }
-                
+
     // TODO: separate out into a different function so we can do the conversion on different threads but only
     // send the mesh to the GPU on the main OpenGL thread.
     glBindVertexArray(mesh.VAO);
@@ -91,7 +98,8 @@ void Chunk::convert_to_mesh(const TextureManager& texture_manager) {
     glBufferSubData(GL_ARRAY_BUFFER, 0, mesh.vertices.size() * sizeof(uint32_t), mesh.vertices.data());
 }
 
-void Chunk::convert_to_quads() {
+void Chunk::convert_to_quads(const std::vector<Chunk>& loaded_chunks,
+                             const std::unordered_map<glm::ivec2, size_t>& chunk_index_map) {
     for (int x = 0; x < CHUNK_LENGTH; x++) {
         for (int y = 0; y < CHUNK_WIDTH; y++) {
             for (int z = 0; z < CHUNK_HEIGHT; z++) {
@@ -110,20 +118,56 @@ void Chunk::convert_to_quads() {
                     quads.emplace_back(VoxelQuad::Face::BOTTOM, x, y, z, block.type);
                 }
 
-                if ((y + 1 < CHUNK_WIDTH && Block::is_transparent(get_block({x, y + 1, z}))) || y + 1 == CHUNK_WIDTH) {
+                if (y + 1 < CHUNK_WIDTH && Block::is_transparent(get_block({x, y + 1, z}))) {
                     quads.emplace_back(VoxelQuad::Face::BACK, x, y, z, block.type);
+                } else if (y + 1 == CHUNK_WIDTH) {
+                    glm::ivec2 neighbor_pos = this->chunk_coords + glm::ivec2(0, 1);
+
+                    if (chunk_index_map.contains(neighbor_pos)) {
+                        const Chunk& neighbor_chunk = loaded_chunks[chunk_index_map.at(neighbor_pos)];
+                        if (Block::is_transparent(neighbor_chunk.get_block_copy({x, 0, z}))) {
+                            quads.emplace_back(VoxelQuad::Face::BACK, x, y, z, block.type);
+                        }
+                    }
                 }
 
-                if ((y - 1 >= 0 && Block::is_transparent(get_block({x, y - 1, z}))) || y == 0) {
+                if (y - 1 >= 0 && Block::is_transparent(get_block({x, y - 1, z}))) {
                     quads.emplace_back(VoxelQuad::Face::FRONT, x, y, z, block.type);
+                } else if (y == 0) {
+                    glm::ivec2 neighbor_pos = this->chunk_coords + glm::ivec2(0, -1);
+
+                    if (chunk_index_map.contains(neighbor_pos)) {
+                        const Chunk& neighbor_chunk = loaded_chunks[chunk_index_map.at(neighbor_pos)];
+                        if (Block::is_transparent(neighbor_chunk.get_block_copy({x, CHUNK_WIDTH - 1, z}))) {
+                            quads.emplace_back(VoxelQuad::Face::FRONT, x, y, z, block.type);
+                        }
+                    }
                 }
 
-                if ((x + 1 < CHUNK_LENGTH && Block::is_transparent(get_block({x + 1, y, z}))) || x + 1 == CHUNK_LENGTH) {
+                if (x + 1 < CHUNK_LENGTH && Block::is_transparent(get_block({x + 1, y, z}))) {
                     quads.emplace_back(VoxelQuad::Face::RIGHT, x, y, z, block.type);
+                } else if (x + 1 == CHUNK_LENGTH) {
+                    glm::ivec2 neighbor_pos = this->chunk_coords + glm::ivec2(1, 0);
+
+                    if (chunk_index_map.contains(neighbor_pos)) {
+                        const Chunk& neighbor_chunk = loaded_chunks[chunk_index_map.at(neighbor_pos)];
+                        if (Block::is_transparent(neighbor_chunk.get_block_copy({0, y, z}))) {
+                            quads.emplace_back(VoxelQuad::Face::RIGHT, x, y, z, block.type);
+                        }
+                    }
                 }
 
-                if ((x - 1 >= 0 && Block::is_transparent(get_block({x - 1, y, z}))) || x == 0) {
+                if (x - 1 >= 0 && Block::is_transparent(get_block({x - 1, y, z}))) {
                     quads.emplace_back(VoxelQuad::Face::LEFT, x, y, z, block.type);
+                } else if (x == 0) {
+                    glm::ivec2 neighbor_pos = this->chunk_coords + glm::ivec2(-1, 0);
+
+                    if (chunk_index_map.contains(neighbor_pos)) {
+                        const Chunk& neighbor_chunk = loaded_chunks[chunk_index_map.at(neighbor_pos)];
+                        if (Block::is_transparent(neighbor_chunk.get_block_copy({CHUNK_LENGTH - 1, y, z}))) {
+                            quads.emplace_back(VoxelQuad::Face::LEFT, x, y, z, block.type);
+                        }
+                    }
                 }
             }
         }
@@ -149,11 +193,11 @@ void Chunk::generate_vertex_data(const VoxelQuad& quad, const TextureManager& te
         case VoxelQuad::Face::BOTTOM:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::BOTTOM);
             mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
+            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
             mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 1, 0, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
             mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 1, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
             mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
+            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 1, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
             break;
         case VoxelQuad::Face::LEFT:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::LEFT);
@@ -167,11 +211,11 @@ void Chunk::generate_vertex_data(const VoxelQuad& quad, const TextureManager& te
         case VoxelQuad::Face::RIGHT:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::RIGHT);
             mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
+            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
             mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
             mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
             mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
+            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
             break;
         case VoxelQuad::Face::FRONT:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::FRONT);
@@ -185,11 +229,11 @@ void Chunk::generate_vertex_data(const VoxelQuad& quad, const TextureManager& te
         case VoxelQuad::Face::BACK:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::BACK);
             mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 1, texture_index, VoxelQuad::Face::BACK}.pack_data());
+            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::BACK}.pack_data());
             mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::BACK}.pack_data());
             mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::BACK}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::BACK}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 0, texture_index, VoxelQuad::Face::BACK}.pack_data());
             mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 1, texture_index, VoxelQuad::Face::BACK}.pack_data());
+            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 0, texture_index, VoxelQuad::Face::BACK}.pack_data());
             break;
     }
 }
