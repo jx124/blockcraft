@@ -28,7 +28,8 @@ struct VoxelQuad {
     } face{};
     glm::ivec3 chunk_pos{};
     Block::Type block_type{};
+    glm::ivec4 ao_state{};
 
-    VoxelQuad(VoxelQuad::Face face, int x, int y, int z, Block::Type block_type);
+    VoxelQuad(VoxelQuad::Face face, int x, int y, int z, Block::Type block_type, glm::ivec4 ao_state);
 };
 

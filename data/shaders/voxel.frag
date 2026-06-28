@@ -5,6 +5,7 @@ flat in int textureIndex;
 flat in int face;
 in vec4 worldDistance;
 in vec4 fragPosWorldSpace;
+in float ambientOcclusion;
 
 uniform sampler2DArray textureId;
 uniform sampler2DArray depthMap;
@@ -96,9 +97,11 @@ void main() {
     vec4 frag_pos_light_space = lightSpaceMatrices[layer] * fragPosWorldSpace;
     float shadow_factor = shadow_calculation(frag_pos_light_space, face, layer);
 
-    float ambient = 0.8f * light_array[face];
-    float diffuse = dot(normals[face], normalize(lightPos));
-    vec4 light = vec4(vec3(ambient + diffuse * mix(1.0f, 0.1f, shadow_factor)), 1.0f);
+    float ambient = light_array[face] * ambientOcclusion;
+    float shadow = mix(0.5f, 0.0f, shadow_factor);
+    float brightness = 1.0f;
+
+    vec4 light = vec4(brightness * vec3(ambient + shadow), 1.0f);
     vec4 fog_color = vec4(0.4f, 0.75f, 0.9f, 1.0f);
 
     fragment = mix(light * texture(textureId, vec3(texCoord, textureIndex)), fog_color, fog_factor(worldDistance));

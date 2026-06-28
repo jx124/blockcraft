@@ -13,8 +13,10 @@ public:
     // Given the current player position, determine which chunks to load/unload
     void update(glm::vec3 player_pos);
     void load_chunks(int num_chunks);
+    void load_all_chunks();
     void unload_chunks(int num_chunks);
     void mesh_chunks(int num_chunks, TextureManager& texture_manager);
+    void mesh_all_chunks(TextureManager& texture_manager);
     std::vector<Chunk>& get_chunks();
 
     // Set get_adjacent to true to get the adjacent block on the face of the hit block: used for placing blocks

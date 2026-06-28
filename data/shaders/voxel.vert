@@ -11,6 +11,9 @@ flat out int textureIndex;
 flat out int face;
 out vec4 worldDistance;
 out vec4 fragPosWorldSpace;
+out float ambientOcclusion;
+
+float ao_values[4] = { 0.512f, 0.64f, 0.8f, 1.0f };
 
 void main() {
     // unpack data
@@ -31,5 +34,6 @@ void main() {
     face = vFace;
     worldDistance = vec4(cameraPos, 1.0) - modelPos;
     fragPosWorldSpace = modelPos;
+    ambientOcclusion = ao_values[ambient_occlusion];
 }
 

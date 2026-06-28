@@ -58,6 +58,7 @@ std::optional<ImageData> Texture::read_image(const std::filesystem::path& image_
     ImageData image{};
     log_debug("Loading image \"%s\"", image_path.c_str());
 
+    stbi_set_flip_vertically_on_load(true); 
     // force images to be RGBA so we can load them all into an array
     unsigned char* data = stbi_load(image_path.c_str(), &image.width, &image.height, &image.n_channels, 4);
 

@@ -4,6 +4,7 @@
 #include "graphics/common.hpp"
 #include "graphics/texture_manager.hpp"
 
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -55,12 +56,17 @@ public:
     Chunk& operator=(Chunk&& other) noexcept = default;
 
     glm::vec3 to_world_pos(glm::vec3 chunk_pos) const;
+    glm::ivec3 to_world_pos(glm::ivec3 chunk_pos) const;
     static glm::vec3 to_chunk_pos(glm::vec3 world_pos);
 
     // TODO: change ordering of storage
     size_t to_block_index(glm::vec3 world_pos) const;
     Block& get_block(glm::ivec3 chunk_pos);
     Block get_block_copy(glm::ivec3 chunk_pos) const;
+
+    static std::optional<Block> get_block_from_world_pos(glm::vec3 world_pos,
+                                                         const std::vector<Chunk>& loaded_chunks,
+                                                         const std::unordered_map<glm::ivec2, size_t>& chunk_index_map);
 
     void generate_blocks_from_seed();
 

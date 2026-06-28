@@ -3,6 +3,7 @@
 #include "blocks/common.hpp"
 #include "glm/gtc/noise.hpp"
 #include "logger.hpp"
+#include <array>
 
 bool Block::is_transparent(Block block) {
     // TODO: use a map
@@ -11,8 +12,8 @@ bool Block::is_transparent(Block block) {
         || block.type == Block::Type::WATER;
 }
 
-VoxelQuad::VoxelQuad(VoxelQuad::Face face, int x, int y, int z, Block::Type block_type)
-    : face(face), chunk_pos(x, y, z), block_type(block_type) {}
+VoxelQuad::VoxelQuad(VoxelQuad::Face face, int x, int y, int z, Block::Type block_type, glm::ivec4 ao_state)
+    : face(face), chunk_pos(x, y, z), block_type(block_type), ao_state(ao_state) {}
 
 Chunk::Chunk(glm::ivec2 chunk_coords, int seed)
     : chunk_coords(chunk_coords), seed(seed), blocks(BLOCKS_PER_CHUNK, {Block::Type::AIR}) {
@@ -33,6 +34,12 @@ glm::vec3 Chunk::to_world_pos(glm::vec3 chunk_pos) const {
              chunk_pos.z };
 }
 
+glm::ivec3 Chunk::to_world_pos(glm::ivec3 chunk_pos) const {
+    return { chunk_coords.x * CHUNK_LENGTH + chunk_pos.x,
+             chunk_coords.y * CHUNK_WIDTH + chunk_pos.y,
+             chunk_pos.z };
+}
+
 glm::vec3 Chunk::to_chunk_pos(glm::vec3 world_pos) {
     return glm::mod(world_pos, { CHUNK_LENGTH, CHUNK_WIDTH, CHUNK_HEIGHT });
 }
@@ -50,6 +57,20 @@ Block& Chunk::get_block(glm::ivec3 chunk_pos) {
 Block Chunk::get_block_copy(glm::ivec3 chunk_pos) const {
     size_t index = CHUNK_LENGTH * CHUNK_WIDTH * chunk_pos.z + CHUNK_LENGTH * chunk_pos.y + chunk_pos.x;
     return blocks[index];
+}
+
+std::optional<Block> Chunk::get_block_from_world_pos(glm::vec3 world_pos,
+                                                     const std::vector<Chunk>& loaded_chunks,
+                                                     const std::unordered_map<glm::ivec2, size_t>& chunk_index_map) {
+    glm::ivec2 chunk_pos = glm::floor(glm::vec2(world_pos.x / CHUNK_LENGTH, world_pos.y / CHUNK_WIDTH));
+
+    if (!chunk_index_map.contains(chunk_pos) || world_pos.z < 0 || world_pos.z >= CHUNK_HEIGHT) {
+        return std::nullopt;
+    }
+
+    const Chunk& chunk = loaded_chunks[chunk_index_map.at(chunk_pos)];
+    glm::ivec3 in_chunk_pos = Chunk::to_chunk_pos(world_pos);
+    return { chunk.get_block_copy(in_chunk_pos) };
 }
 
 void Chunk::generate_blocks_from_seed() {
@@ -98,6 +119,97 @@ void Chunk::convert_to_mesh(const TextureManager& texture_manager,
     glBufferSubData(GL_ARRAY_BUFFER, 0, mesh.vertices.size() * sizeof(uint32_t), mesh.vertices.data());
 }
 
+constexpr std::array<VoxelQuad::Face, 6> faces = {
+    VoxelQuad::Face::TOP,
+    VoxelQuad::Face::BOTTOM,
+    VoxelQuad::Face::LEFT,
+    VoxelQuad::Face::RIGHT,
+    VoxelQuad::Face::FRONT,
+    VoxelQuad::Face::BACK,
+};
+
+constexpr std::array<glm::vec3, 6> block_neighbors = {
+    glm::vec3{0.0f, 0.0f, 1.0f},  // TOP
+    glm::vec3{0.0f, 0.0f, -1.0f}, // BOTTOM
+    glm::vec3{-1.0f, 0.0f, 0.0f}, // LEFT
+    glm::vec3{1.0f, 0.0f, 0.0f},  // RIGHT
+    glm::vec3{0.0f, -1.0f, 0.0f}, // FRONT
+    glm::vec3{0.0f, 1.0f, 0.0f},  // BACK
+};
+
+// neighboring block positions when looking at face, in a clockwise order from the top left
+// used for ambient occlusion calculations
+constexpr std::array<std::array<glm::vec3, 8>, 6> face_neighbors = {
+    std::array<glm::vec3,8>{ // TOP
+        glm::vec3{-1.0f,  1.0f, 1.0f},
+        glm::vec3{ 0.0f,  1.0f, 1.0f},
+        glm::vec3{ 1.0f,  1.0f, 1.0f},
+        glm::vec3{ 1.0f,  0.0f, 1.0f},
+        glm::vec3{ 1.0f, -1.0f, 1.0f},
+        glm::vec3{ 0.0f, -1.0f, 1.0f},
+        glm::vec3{-1.0f, -1.0f, 1.0f},
+        glm::vec3{-1.0f,  0.0f, 1.0f},
+    },
+    std::array<glm::vec3,8>{ // BOTTOM
+        glm::vec3{-1.0f, -1.0f, -1.0f},
+        glm::vec3{ 0.0f, -1.0f, -1.0f},
+        glm::vec3{ 1.0f, -1.0f, -1.0f},
+        glm::vec3{ 1.0f,  0.0f, -1.0f},
+        glm::vec3{ 1.0f,  1.0f, -1.0f},
+        glm::vec3{ 0.0f,  1.0f, -1.0f},
+        glm::vec3{-1.0f,  1.0f, -1.0f},
+        glm::vec3{-1.0f,  0.0f, -1.0f},
+    },
+    std::array<glm::vec3,8>{ // LEFT
+        glm::vec3{-1.0f,  1.0f,  1.0f},
+        glm::vec3{-1.0f,  0.0f,  1.0f},
+        glm::vec3{-1.0f, -1.0f,  1.0f},
+        glm::vec3{-1.0f, -1.0f,  0.0f},
+        glm::vec3{-1.0f, -1.0f, -1.0f},
+        glm::vec3{-1.0f,  0.0f, -1.0f},
+        glm::vec3{-1.0f,  1.0f, -1.0f},
+        glm::vec3{-1.0f,  1.0f,  0.0f},
+    },
+    std::array<glm::vec3,8>{ // RIGHT
+        glm::vec3{1.0f, -1.0f,  1.0f},
+        glm::vec3{1.0f,  0.0f,  1.0f},
+        glm::vec3{1.0f,  1.0f,  1.0f},
+        glm::vec3{1.0f,  1.0f,  0.0f},
+        glm::vec3{1.0f,  1.0f, -1.0f},
+        glm::vec3{1.0f,  0.0f, -1.0f},
+        glm::vec3{1.0f, -1.0f, -1.0f},
+        glm::vec3{1.0f, -1.0f,  0.0f},
+    },
+    std::array<glm::vec3,8>{ // FRONT
+        glm::vec3{-1.0f, -1.0f,  1.0f},
+        glm::vec3{ 0.0f, -1.0f,  1.0f},
+        glm::vec3{ 1.0f, -1.0f,  1.0f},
+        glm::vec3{ 1.0f, -1.0f,  0.0f},
+        glm::vec3{ 1.0f, -1.0f, -1.0f},
+        glm::vec3{ 0.0f, -1.0f, -1.0f},
+        glm::vec3{-1.0f, -1.0f, -1.0f},
+        glm::vec3{-1.0f, -1.0f,  0.0f},
+    },
+    std::array<glm::vec3,8>{ // BACK
+        glm::vec3{ 1.0f, 1.0f,  1.0f},
+        glm::vec3{ 0.0f, 1.0f,  1.0f},
+        glm::vec3{-1.0f, 1.0f,  1.0f},
+        glm::vec3{-1.0f, 1.0f,  0.0f},
+        glm::vec3{-1.0f, 1.0f, -1.0f},
+        glm::vec3{ 0.0f, 1.0f, -1.0f},
+        glm::vec3{ 1.0f, 1.0f, -1.0f},
+        glm::vec3{ 1.0f, 1.0f,  0.0f},
+    },
+};
+
+// in anti_clockwise order starting from bottom left
+std::array<std::array<int, 3>, 4> corner_neighbors = {
+    std::array<int, 3>{7, 6, 5},
+    std::array<int, 3>{5, 4, 3},
+    std::array<int, 3>{3, 2, 1},
+    std::array<int, 3>{1, 0, 7},
+};
+
 void Chunk::convert_to_quads(const std::vector<Chunk>& loaded_chunks,
                              const std::unordered_map<glm::ivec2, size_t>& chunk_index_map) {
     for (int x = 0; x < CHUNK_LENGTH; x++) {
@@ -109,64 +221,45 @@ void Chunk::convert_to_quads(const std::vector<Chunk>& loaded_chunks,
                     continue;
                 }
 
-                // only add quads whose neighbors are transparent
-                if ((z + 1 < CHUNK_HEIGHT && Block::is_transparent(get_block({x, y, z + 1}))) || z + 1 == CHUNK_HEIGHT) {
-                    quads.emplace_back(VoxelQuad::Face::TOP, x, y, z, block.type);
-                }
+                glm::vec3 current_pos = glm::vec3(x, y, z);
+                for (VoxelQuad::Face face : faces) {
+                    glm::vec3 block_neighbor_pos = to_world_pos(current_pos + block_neighbors[face]);
+                    std::optional<Block> block_neighbor = get_block_from_world_pos(block_neighbor_pos,
+                                                                                   loaded_chunks,
+                                                                                   chunk_index_map);
 
-                if ((z - 1 >= 0 && Block::is_transparent(get_block({x, y, z - 1}))) || z == 0) {
-                    quads.emplace_back(VoxelQuad::Face::BOTTOM, x, y, z, block.type);
-                }
+                    // hidden-face culling
+                    if (!block_neighbor || Block::is_transparent(*block_neighbor)) {
+                        std::array<int, 8> face_neighbor_opaque{};
 
-                if (y + 1 < CHUNK_WIDTH && Block::is_transparent(get_block({x, y + 1, z}))) {
-                    quads.emplace_back(VoxelQuad::Face::BACK, x, y, z, block.type);
-                } else if (y + 1 == CHUNK_WIDTH) {
-                    glm::ivec2 neighbor_pos = this->chunk_coords + glm::ivec2(0, 1);
-
-                    if (chunk_index_map.contains(neighbor_pos)) {
-                        const Chunk& neighbor_chunk = loaded_chunks[chunk_index_map.at(neighbor_pos)];
-                        if (Block::is_transparent(neighbor_chunk.get_block_copy({x, 0, z}))) {
-                            quads.emplace_back(VoxelQuad::Face::BACK, x, y, z, block.type);
+                        // check number of opaque blocks in neighborhood of face
+                        for (int i = 0; i < 8; i++) {
+                            glm::vec3 face_neighbor_pos = to_world_pos(current_pos + face_neighbors[face][i]);
+                            std::optional<Block> face_neighbor = get_block_from_world_pos(face_neighbor_pos,
+                                                                                          loaded_chunks,
+                                                                                          chunk_index_map);
+                            if (face_neighbor && !Block::is_transparent(*face_neighbor)) {
+                                face_neighbor_opaque[i] = 1;
+                            }
                         }
-                    }
-                }
 
-                if (y - 1 >= 0 && Block::is_transparent(get_block({x, y - 1, z}))) {
-                    quads.emplace_back(VoxelQuad::Face::FRONT, x, y, z, block.type);
-                } else if (y == 0) {
-                    glm::ivec2 neighbor_pos = this->chunk_coords + glm::ivec2(0, -1);
+                        // calculate ambient occlusion values for quad corners
+                        glm::ivec4 ao_state{};
+                        for (int i = 0; i < 4; i++) {
+                            int side_1_opaque = face_neighbor_opaque[corner_neighbors[i][0]];
+                            int side_2_opaque = face_neighbor_opaque[corner_neighbors[i][2]];
 
-                    if (chunk_index_map.contains(neighbor_pos)) {
-                        const Chunk& neighbor_chunk = loaded_chunks[chunk_index_map.at(neighbor_pos)];
-                        if (Block::is_transparent(neighbor_chunk.get_block_copy({x, CHUNK_WIDTH - 1, z}))) {
-                            quads.emplace_back(VoxelQuad::Face::FRONT, x, y, z, block.type);
+                            if (side_1_opaque + side_2_opaque == 2) {
+                                ao_state[i] = 0;
+                                continue;
+                            }
+
+                            int corner_opaque = face_neighbor_opaque[corner_neighbors[i][1]];
+
+                            ao_state[i] = 3 - (side_1_opaque + side_2_opaque + corner_opaque);
                         }
-                    }
-                }
 
-                if (x + 1 < CHUNK_LENGTH && Block::is_transparent(get_block({x + 1, y, z}))) {
-                    quads.emplace_back(VoxelQuad::Face::RIGHT, x, y, z, block.type);
-                } else if (x + 1 == CHUNK_LENGTH) {
-                    glm::ivec2 neighbor_pos = this->chunk_coords + glm::ivec2(1, 0);
-
-                    if (chunk_index_map.contains(neighbor_pos)) {
-                        const Chunk& neighbor_chunk = loaded_chunks[chunk_index_map.at(neighbor_pos)];
-                        if (Block::is_transparent(neighbor_chunk.get_block_copy({0, y, z}))) {
-                            quads.emplace_back(VoxelQuad::Face::RIGHT, x, y, z, block.type);
-                        }
-                    }
-                }
-
-                if (x - 1 >= 0 && Block::is_transparent(get_block({x - 1, y, z}))) {
-                    quads.emplace_back(VoxelQuad::Face::LEFT, x, y, z, block.type);
-                } else if (x == 0) {
-                    glm::ivec2 neighbor_pos = this->chunk_coords + glm::ivec2(-1, 0);
-
-                    if (chunk_index_map.contains(neighbor_pos)) {
-                        const Chunk& neighbor_chunk = loaded_chunks[chunk_index_map.at(neighbor_pos)];
-                        if (Block::is_transparent(neighbor_chunk.get_block_copy({CHUNK_LENGTH - 1, y, z}))) {
-                            quads.emplace_back(VoxelQuad::Face::LEFT, x, y, z, block.type);
-                        }
+                        quads.emplace_back(face, x, y, z, block.type, ao_state);
                     }
                 }
             }
@@ -174,66 +267,126 @@ void Chunk::convert_to_quads(const std::vector<Chunk>& loaded_chunks,
     }
 }
 
+constexpr std::array<float, 4> ao_values = { 0.512f, 0.64f, 0.8f, 1.0f };
+
 void Chunk::generate_vertex_data(const VoxelQuad& quad, const TextureManager& texture_manager) {
     int x = quad.chunk_pos.x;
     int y = quad.chunk_pos.y;
     int z = quad.chunk_pos.z;
     int texture_index{};
+    glm::ivec4 ao = quad.ao_state;
 
+    // TODO: refactor out vertex offsets
     switch (quad.face) {
         case VoxelQuad::Face::TOP:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::TOP);
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::TOP}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 1, 0, texture_index, VoxelQuad::Face::TOP}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::TOP}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::TOP}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::TOP}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::TOP}.pack_data());
+            // have split in quad across from the darkest corner
+            if (ao_values[ao[0]] + ao_values[ao[2]] > ao_values[ao[1]] + ao_values[ao[3]]) {
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::TOP, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 1, 0, texture_index, VoxelQuad::Face::TOP, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::TOP, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::TOP, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::TOP, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::TOP, ao[0]}.pack_data());
+            } else {
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::TOP, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 1, 0, texture_index, VoxelQuad::Face::TOP, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::TOP, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 1, 0, texture_index, VoxelQuad::Face::TOP, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::TOP, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::TOP, ao[3]}.pack_data());
+
+            }
             break;
         case VoxelQuad::Face::BOTTOM:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::BOTTOM);
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 1, 0, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 1, texture_index, VoxelQuad::Face::BOTTOM}.pack_data());
+            if (ao_values[ao[0]] + ao_values[ao[2]] > ao_values[ao[1]] + ao_values[ao[3]]) {
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 0, texture_index, VoxelQuad::Face::BOTTOM, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 0, texture_index, VoxelQuad::Face::BOTTOM, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 1, 1, texture_index, VoxelQuad::Face::BOTTOM, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 1, 1, texture_index, VoxelQuad::Face::BOTTOM, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::BOTTOM, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 0, texture_index, VoxelQuad::Face::BOTTOM, ao[0]}.pack_data());
+            } else {
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 0, texture_index, VoxelQuad::Face::BOTTOM, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 0, texture_index, VoxelQuad::Face::BOTTOM, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::BOTTOM, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 0, texture_index, VoxelQuad::Face::BOTTOM, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 1, 1, texture_index, VoxelQuad::Face::BOTTOM, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::BOTTOM, ao[3]}.pack_data());
+            }
             break;
         case VoxelQuad::Face::LEFT:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::LEFT);
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::LEFT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::LEFT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::LEFT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::LEFT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::LEFT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::LEFT}.pack_data());
+            if (ao_values[ao[0]] + ao_values[ao[2]] > ao_values[ao[1]] + ao_values[ao[3]]) {
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 0, texture_index, VoxelQuad::Face::LEFT, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 1, 0, texture_index, VoxelQuad::Face::LEFT, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 1, 1, texture_index, VoxelQuad::Face::LEFT, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 1, 1, texture_index, VoxelQuad::Face::LEFT, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::LEFT, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 0, texture_index, VoxelQuad::Face::LEFT, ao[0]}.pack_data());
+            } else {
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 0, texture_index, VoxelQuad::Face::LEFT, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 1, 0, texture_index, VoxelQuad::Face::LEFT, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::LEFT, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 1, 0, texture_index, VoxelQuad::Face::LEFT, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 1, 1, texture_index, VoxelQuad::Face::LEFT, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::LEFT, ao[3]}.pack_data());
+            }
             break;
         case VoxelQuad::Face::RIGHT:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::RIGHT);
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::RIGHT}.pack_data());
+            if (ao_values[ao[0]] + ao_values[ao[2]] > ao_values[ao[1]] + ao_values[ao[3]]) {
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::RIGHT, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 0, texture_index, VoxelQuad::Face::RIGHT, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::RIGHT, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::RIGHT, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 0, 1, texture_index, VoxelQuad::Face::RIGHT, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::RIGHT, ao[0]}.pack_data());
+            } else {
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::RIGHT, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 0, texture_index, VoxelQuad::Face::RIGHT, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 0, 1, texture_index, VoxelQuad::Face::RIGHT, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 0, texture_index, VoxelQuad::Face::RIGHT, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::RIGHT, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 0, 1, texture_index, VoxelQuad::Face::RIGHT, ao[3]}.pack_data());
+            }
             break;
         case VoxelQuad::Face::FRONT:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::FRONT);
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::FRONT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 1, 1, texture_index, VoxelQuad::Face::FRONT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 1, 0, texture_index, VoxelQuad::Face::FRONT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 1, 0, texture_index, VoxelQuad::Face::FRONT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 0, texture_index, VoxelQuad::Face::FRONT}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 1, texture_index, VoxelQuad::Face::FRONT}.pack_data());
+            if (ao_values[ao[0]] + ao_values[ao[2]] > ao_values[ao[1]] + ao_values[ao[3]]) {
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::FRONT, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 1, 0, texture_index, VoxelQuad::Face::FRONT, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 1, 1, texture_index, VoxelQuad::Face::FRONT, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 1, 1, texture_index, VoxelQuad::Face::FRONT, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 1, texture_index, VoxelQuad::Face::FRONT, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::FRONT, ao[0]}.pack_data());
+            } else {
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 0, 0, 0, texture_index, VoxelQuad::Face::FRONT, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 1, 0, texture_index, VoxelQuad::Face::FRONT, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 1, texture_index, VoxelQuad::Face::FRONT, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 0, 1, 0, texture_index, VoxelQuad::Face::FRONT, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 0, z + 1, 1, 1, texture_index, VoxelQuad::Face::FRONT, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 0, z + 1, 0, 1, texture_index, VoxelQuad::Face::FRONT, ao[3]}.pack_data());
+            }
             break;
         case VoxelQuad::Face::BACK:
             texture_index = texture_manager.get_texture_index(quad.block_type, VoxelQuad::Face::BACK);
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 1, texture_index, VoxelQuad::Face::BACK}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::BACK}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 1, 1, texture_index, VoxelQuad::Face::BACK}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 1, 0, texture_index, VoxelQuad::Face::BACK}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 0, 1, texture_index, VoxelQuad::Face::BACK}.pack_data());
-            mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 0, 0, texture_index, VoxelQuad::Face::BACK}.pack_data());
+            if (ao_values[ao[0]] + ao_values[ao[2]] > ao_values[ao[1]] + ao_values[ao[3]]) {
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 0, 0, texture_index, VoxelQuad::Face::BACK, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 1, 0, texture_index, VoxelQuad::Face::BACK, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::BACK, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::BACK, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::BACK, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 0, 0, texture_index, VoxelQuad::Face::BACK, ao[0]}.pack_data());
+            } else {
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 0, 0, 0, texture_index, VoxelQuad::Face::BACK, ao[0]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 1, 0, texture_index, VoxelQuad::Face::BACK, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::BACK, ao[3]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 0, 1, 0, texture_index, VoxelQuad::Face::BACK, ao[1]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 0, y + 1, z + 1, 1, 1, texture_index, VoxelQuad::Face::BACK, ao[2]}.pack_data());
+                mesh.vertices.push_back(Vertex{x + 1, y + 1, z + 1, 0, 1, texture_index, VoxelQuad::Face::BACK, ao[3]}.pack_data());
+            }
             break;
     }
 }

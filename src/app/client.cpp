@@ -110,8 +110,8 @@ void ClientApplication::run() {
     shadow_map = std::make_unique<ShadowMap>(SHADOW_WIDTH, SHADOW_HEIGHT, camera_system);
 
     chunk_manager.update({8.0f, 8.0f, 160.0f});
-    chunk_manager.load_chunks(10000);
-    chunk_manager.mesh_chunks(10000, texture_manager);
+    chunk_manager.load_all_chunks();
+    chunk_manager.mesh_all_chunks(texture_manager);
 
     while (!should_close) {
         glfwPollEvents();

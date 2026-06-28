@@ -8,7 +8,7 @@ TextureManager::TextureManager() {
     this->register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::RIGHT);
     this->register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::FRONT);
     this->register_block_face("data/assets/grass_side.png", Block::Type::GRASS, VoxelQuad::Face::BACK);
-    this->register_block_face("data/assets/dirt.png", Block::Type::DIRT, VoxelQuad::Face::BOTTOM);
+    this->register_block_face("data/assets/dirt.png", Block::Type::GRASS, VoxelQuad::Face::BOTTOM);
     this->register_block("data/assets/stone.png", Block::Type::STONE);
     this->register_block("data/assets/dirt.png", Block::Type::DIRT);
     this->register_block("data/assets/glass.png", Block::Type::GLASS);
