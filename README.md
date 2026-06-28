@@ -1,7 +1,7 @@
 # Blockcraft
 This is my attempt at making a multiplayer Minecraft clone to learn more about computer graphics, game development, and networking.
 
-![Screenshot of Blockcraft](/client_preview.png)
+![Screenshot of Blockcraft](/client_preview.jpg)
 
 ## Quick Start
 On Linux:
@@ -20,8 +20,14 @@ Replace `release` with `debug` for the debug build.
 ## Features
 - Infinite terrain generation using Perlin noise. Only the grassy biome exists for now, with improved world generation planned.
 - Placing and breaking blocks.
-- Chunking and meshing system: The world is composed of chunks of size 16 x 16 x 384 blocks, with face culling between blocks that are not visible to improve performance. Voxel vertex data is also packed into a single `uint32_t`, reducing data to be sent to the GPU by 7x, improving throughput and performance.
+- Chunking and meshing system: The world is composed of chunks of size 16 x 16 x 256 blocks, with face culling between blocks that are not visible to improve performance. Voxel vertex data is also packed into a single `uint32_t`, reducing data to be sent to the GPU by 7x, improving throughput and performance.
 - Entity Component System (ECS) based on archetypes combined with an event system. This allows for easier code organization and development due to lower coupling, and also improves performance since the ECS stores data in a cache-friendly format.
+- Lighting system implements cascaded shadow maps to render shadows at higher resolution when near the camera, and at lower resolution when far away, saving memory without sacrificing too much on quality. Voxel ambient occlusion is also implemented to improve realism.
 
 ## Acknowledgements
-- The Entity Component System (ECS) code mainly follows this tutorial by Alex Jobe: https://www.alexjobe.net/posts/ecs with some modifications. Namely, I changed the `shared_ptr`s to `unique_ptr`s since the lifetime of the resources are taken care of by the ECS. I also used fold expressions to allow registering multiple Components to one System at a time
+- The Entity Component System (ECS) code mainly follows this tutorial by Alex Jobe: https://www.alexjobe.net/posts/ecs with some modifications. Namely, I changed the `shared_ptr`s to `unique_ptr`s since the lifetime of the resources are taken care of by the ECS. I also used fold expressions to allow registering multiple Components to one System at compile time.
+- A lot of the OpenGL concepts and code come from https://learnopengl.com. The cascaded shadow maps were also implemented with the help of this NVIDIA [paper](https://developer.download.nvidia.com/SDK/10.5/opengl/src/cascaded_shadow_maps/doc/cascaded_shadow_maps.pdf) to determine the splitting distances, while the ambient occlusion was implemented with the help of these websites: 
+    - https://0fps.net/2013/07/03/ambient-occlusion-for-minecraft-like-worlds/
+    - https://medium.com/@andrebluntindie/vertex-ambient-occlusion-for-voxel-games-the-principle-and-implementation-e5340bd62845
+- The Perlin noise terrain generation was implemented with the help of this tutorial by Red Blob Games: https://www.redblobgames.com/maps/terrain-from-noise/
+- The voxel ray casting algorithm used to efficiently determine which block the camera is pointing at is adapted from this [paper](http://www.cse.yorku.ca/~amana/research/grid.pdf) by Amanatides and Woo.
