@@ -5,9 +5,14 @@
 #include "graphics/window.hpp"
 #include "shadow_map.hpp"
 #include "systems/common.hpp"
+#include "networking/client.hpp"
+#include "networking/server.hpp"
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <queue>
+#include <string>
 
 constexpr float BLOCKS_PER_SECOND = 5.0f;
 constexpr int SHADOW_WIDTH = 2048;
@@ -15,12 +20,17 @@ constexpr int SHADOW_HEIGHT = 2048;
 
 class ClientApplication {
 public:
-    ClientApplication(int width, int height);
+    enum class Mode {
+        Server,
+        Client
+    };
+
+    ClientApplication(int width, int height, ClientApplication::Mode mode, std::string hostname, uint16_t port);
     ~ClientApplication();
     ClientApplication(const ClientApplication&) = delete;
-    ClientApplication(ClientApplication&&) noexcept = default;
+    ClientApplication(ClientApplication&&) noexcept = delete;
     ClientApplication& operator=(const ClientApplication&) = delete;
-    ClientApplication& operator=(ClientApplication&&) noexcept = default;
+    ClientApplication& operator=(ClientApplication&&) noexcept = delete;
 
     // Start main loop of the application.
     void run();
@@ -32,6 +42,9 @@ public:
 private:
     int width;
     int height;
+    ClientApplication::Mode mode{};
+    std::string hostname;
+    uint16_t port;
     std::unique_ptr<Window> window;
     bool should_close = false;
     bool cursor_disabled = true;
@@ -46,6 +59,8 @@ private:
     std::vector<RenderCall> render_queue{};
     EventManager event_manager{};
     std::queue<Event> events{};
+    std::optional<ServerInterface> server{};
+    ClientInterface client{};
 
     // TODO: create shader manager
     GLuint voxel_shader{};

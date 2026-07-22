@@ -67,8 +67,15 @@ add_subdirectory(external/glm)
 
 set(GLM_BUILD_TESTS OFF CACHE BOOL "GLM lib only")
 
+find_package(Threads REQUIRED)
+
+add_library(asio INTERFACE)
+target_include_directories(asio SYSTEM INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/external/asio/asio/include")
+target_compile_definitions(asio INTERFACE ASIO_STANDALONE)
+target_link_libraries(asio INTERFACE Threads::Threads)
+
 add_executable(blockcraft WIN32 main.cpp)
-target_link_libraries(blockcraft ${OPENGL_LIBRARIES} glad_gl_core_46 glfw glm::glm)
+target_link_libraries(blockcraft ${OPENGL_LIBRARIES} glad_gl_core_46 glfw glm::glm asio)
 
 add_subdirectory(src)
 add_subdirectory(include)
