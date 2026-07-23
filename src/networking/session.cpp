@@ -34,7 +34,7 @@ asio::ip::tcp::endpoint Session::remote_endpoint() const {
     asio::error_code ec;
     auto endpoint = socket.remote_endpoint(ec);
     if (ec) {
-        log_error("Error resolving endpoints: %s", ec.message());
+        log_error("Error resolving endpoints: %s", ec.message().c_str());
         return {};
     }
     return endpoint;
@@ -52,7 +52,7 @@ asio::awaitable<void> Session::read_loop() {
                                                          asio::as_tuple(asio::use_awaitable));
         if (ec) {
             if (ec != asio::error::eof) {
-                log_error("Error reading header: %s", ec.message());
+                log_error("Error reading header: %s", ec.message().c_str());
             }
             break;
         }
@@ -64,7 +64,7 @@ asio::awaitable<void> Session::read_loop() {
                                                              asio::as_tuple(asio::use_awaitable));
             if (ec) {
                 if (ec != asio::error::eof) {
-                    log_error("Error reading payload: %s", ec.message());
+                    log_error("Error reading payload: %s", ec.message().c_str());
                 }
                 break;
             }
@@ -90,7 +90,7 @@ asio::awaitable<void> Session::write_loop() {
 
         if (ec) {
             if (ec != asio::error::eof) {
-                log_error("Error writing packet: %s", ec.message());
+                log_error("Error writing packet: %s", ec.message().c_str());
             }
             close();
             break;

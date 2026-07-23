@@ -74,8 +74,11 @@ target_include_directories(asio SYSTEM INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/ex
 target_compile_definitions(asio INTERFACE ASIO_STANDALONE)
 target_link_libraries(asio INTERFACE Threads::Threads)
 
-add_executable(blockcraft WIN32 main.cpp)
+add_executable(blockcraft WIN32 blockcraft.cpp)
 target_link_libraries(blockcraft ${OPENGL_LIBRARIES} glad_gl_core_46 glfw glm::glm asio)
+
+add_executable(blockcraft_server WIN32 blockcraft_server.cpp)
+target_link_libraries(blockcraft_server asio)
 
 add_subdirectory(src)
 add_subdirectory(include)

@@ -40,7 +40,7 @@ asio::awaitable<void> ServerInterface::accept_loop() {
 
         // copy endpoint first so we still have it when disconnecting
         auto endpoint = session->remote_endpoint();
-        log_debug("[Server] Client %ld connected (%s)", id, endpoint);
+        log_debug("[Server] Client %ld connected (%s:%d)", id, endpoint.address().to_string().c_str(), endpoint.port());
 
         session->start(
             [this](std::shared_ptr<Session> session, Packet packet){
@@ -49,7 +49,7 @@ asio::awaitable<void> ServerInterface::accept_loop() {
                 }
             },
             [this, id, endpoint](std::shared_ptr<Session>) {
-                log_debug("[Server] Client %ld disconnected (%s)", id, endpoint);
+                log_debug("[Server] Client %ld disconnected (%s:%d)", id, endpoint.address().to_string().c_str(), endpoint.port());
                 sessions.erase(id);
             }
         );

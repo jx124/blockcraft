@@ -51,7 +51,7 @@ asio::awaitable<void> ClientInterface::connect_coroutine(std::string host, std::
                                                               asio::as_tuple(asio::use_awaitable));
 
     if (ec) {
-        log_error("Error resolving endpoint: %s", ec.message());
+        log_error("Error resolving endpoint: %s", ec.message().c_str());
         co_return;
     }
 
@@ -63,7 +63,7 @@ asio::awaitable<void> ClientInterface::connect_coroutine(std::string host, std::
                                                                      asio::as_tuple(asio::use_awaitable));
 
     if (ec) {
-        log_error("Error resolving endpoint (%s): %s", connection_endpoint, ec.message());
+        log_error("Error resolving endpoint (%s): %s", connection_endpoint, ec.message().c_str());
         co_return;
     }
 
@@ -75,7 +75,7 @@ asio::awaitable<void> ClientInterface::connect_coroutine(std::string host, std::
             }
         },
         [this, host, port](std::shared_ptr<Session> session){
-            log_debug("[Client] Disconnected from server (%s:%s)", host, port);
+            log_debug("[Client] Disconnected from server (%s:%s)", host.c_str(), port.c_str());
             session.reset();
             if (on_disconnect) {
                 on_disconnect();
@@ -83,7 +83,7 @@ asio::awaitable<void> ClientInterface::connect_coroutine(std::string host, std::
         }
     );
 
-    log_debug("[Client] Connected to server (%s:%s)", host, port);
+    log_debug("[Client] Connected to server (%s:%s)", host.c_str(), port.c_str());
     if (on_connect) {
         on_connect();
     }

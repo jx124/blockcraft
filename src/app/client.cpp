@@ -12,8 +12,8 @@
 
 #include <iostream>
 
-ClientApplication::ClientApplication(int width, int height, ClientApplication::Mode mode, std::string hostname, uint16_t port)
-    : width(width), height(height), mode(mode), hostname(hostname), port(port), window(nullptr)
+ClientApplication::ClientApplication(int width, int height, std::string hostname, uint16_t port)
+    : width(width), height(height), hostname(hostname), port(port), window(nullptr)
 {
     if (!glfwInit()) {
         throw std::runtime_error("[ClientApplication] Cannot initialize GLFW");
@@ -115,16 +115,6 @@ void ClientApplication::run() {
     chunk_manager.load_all_chunks();
     chunk_manager.mesh_all_chunks(texture_manager);
 
-    if (this->mode == ClientApplication::Mode::Server) {
-        server.emplace(this->port);
-
-        server->register_packet_handler(PacketType::Ping,
-                                       [this](std::shared_ptr<Session> session, Packet){
-            std::cout << "[Server] Ping from " << session->remote_endpoint() << std::endl;
-            server->send_to(session, Packet::make(PacketType::Pong, {}));
-        });
-    }
-
     ClientInterface client;
 
     client.register_connect_handler([&client](){
@@ -180,10 +170,6 @@ void ClientApplication::run() {
         glDrawArrays(GL_LINES, 0, 4);
 
         window->update();
-
-        if (server) {
-            server->poll();
-        }
 
         client.poll();
         client.send(Packet::make(PacketType::Ping, {}));

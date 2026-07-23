@@ -10,7 +10,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <queue>
 #include <string>
 
@@ -20,12 +19,7 @@ constexpr int SHADOW_HEIGHT = 2048;
 
 class ClientApplication {
 public:
-    enum class Mode {
-        Server,
-        Client
-    };
-
-    ClientApplication(int width, int height, ClientApplication::Mode mode, std::string hostname, uint16_t port);
+    ClientApplication(int width, int height, std::string hostname, uint16_t port);
     ~ClientApplication();
     ClientApplication(const ClientApplication&) = delete;
     ClientApplication(ClientApplication&&) noexcept = delete;
@@ -42,7 +36,6 @@ public:
 private:
     int width;
     int height;
-    ClientApplication::Mode mode{};
     std::string hostname;
     uint16_t port;
     std::unique_ptr<Window> window;
@@ -59,7 +52,6 @@ private:
     std::vector<RenderCall> render_queue{};
     EventManager event_manager{};
     std::queue<Event> events{};
-    std::optional<ServerInterface> server{};
     ClientInterface client{};
 
     // TODO: create shader manager
