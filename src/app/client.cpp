@@ -152,7 +152,7 @@ void ClientApplication::run() {
         for (const auto& chunk : chunk_manager.get_chunks()) {
             render_queue.emplace_back(
                 glm::translate(identity, chunk.to_world_pos(glm::vec3(0.0f))),
-                chunk.get_VAO(),
+                chunk_manager.get_chunk_VAO(chunk.get_chunk_coords()),
                 voxel_shader,
                 texture_manager.get_texture_unit(),
                 chunk.get_num_vertices()

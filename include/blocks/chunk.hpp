@@ -78,12 +78,10 @@ public:
     GLuint get_VAO() const;
     size_t get_num_vertices() const;
     glm::ivec2 get_chunk_coords() const;
+    const std::vector<uint32_t>& get_vertices() const;
 
     void add_block(glm::vec3 world_pos, Block block);
     void delete_block(glm::vec3 world_pos);
-
-    // Delete the vertex array and buffer objects from the GPU.
-    void clear();
 
 private:
     // TODO: check neighboring blocks for face culling and set block type depending on face

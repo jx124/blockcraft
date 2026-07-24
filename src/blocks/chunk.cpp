@@ -16,17 +16,7 @@ VoxelQuad::VoxelQuad(VoxelQuad::Face face, int x, int y, int z, Block::Type bloc
     : face(face), chunk_pos(x, y, z), block_type(block_type), ao_state(ao_state) {}
 
 Chunk::Chunk(glm::ivec2 chunk_coords, int seed)
-    : chunk_coords(chunk_coords), seed(seed), blocks(BLOCKS_PER_CHUNK, {Block::Type::AIR}) {
-
-    glGenVertexArrays(1, &mesh.VAO);
-    glBindVertexArray(mesh.VAO);
-    glGenBuffers(1, &mesh.VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
-
-    glVertexAttribIPointer(0, 1, GL_UNSIGNED_INT, 0, (void*)0);
-    glEnableVertexAttribArray(0);
-    glBufferData(GL_ARRAY_BUFFER, BLOCKS_PER_CHUNK * VERTICES_PER_BLOCK * sizeof(uint32_t), nullptr, GL_STATIC_DRAW);
-};
+    : chunk_coords(chunk_coords), seed(seed), blocks(BLOCKS_PER_CHUNK, {Block::Type::AIR}) {};
 
 glm::vec3 Chunk::to_world_pos(glm::vec3 chunk_pos) const {
     return { static_cast<float>(chunk_coords.x * CHUNK_LENGTH) + chunk_pos.x,
@@ -111,12 +101,6 @@ void Chunk::convert_to_mesh(const TextureManager& texture_manager,
     for (const VoxelQuad& quad : quads) {
         generate_vertex_data(quad, texture_manager);
     }
-
-    // TODO: separate out into a different function so we can do the conversion on different threads but only
-    // send the mesh to the GPU on the main OpenGL thread.
-    glBindVertexArray(mesh.VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, mesh.vertices.size() * sizeof(uint32_t), mesh.vertices.data());
 }
 
 constexpr std::array<VoxelQuad::Face, 6> faces = {
@@ -403,6 +387,10 @@ glm::ivec2 Chunk::get_chunk_coords() const {
     return chunk_coords;
 }
 
+const std::vector<uint32_t>& Chunk::get_vertices() const {
+    return mesh.vertices;
+}
+
 void Chunk::add_block(glm::vec3 world_pos, Block block) {
     size_t index = to_block_index(world_pos);
     blocks[index] = block;
@@ -415,8 +403,3 @@ void Chunk::delete_block(glm::vec3 world_pos) {
     blocks[index] = { Block::Type::AIR };
 }
 
-void Chunk::clear() {
-    glBindVertexArray(0);
-    glDeleteBuffers(1, &mesh.VBO);
-    glDeleteVertexArrays(1, &mesh.VAO);
-}

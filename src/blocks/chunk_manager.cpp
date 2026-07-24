@@ -1,6 +1,4 @@
 #include "blocks/chunk_manager.hpp"
-#include "blocks/chunk.hpp"
-#include "utils/logger.hpp"
 
 ChunkManager::ChunkManager(int seed, int chunk_radius) : seed(seed), chunk_radius(chunk_radius) {}
 
@@ -155,7 +153,6 @@ void ChunkManager::unload_chunks(int num_chunks) {
 
         // skip swapping to end to remove if chunk is already at the end: causes double erase and segfaults
         if (chunk_index == loaded_chunks.size() - 1) {
-            loaded_chunks[chunk_index].clear();
             loaded_chunks.pop_back();
             chunk_index_map.erase(chunk_pos);
             continue;
@@ -163,12 +160,13 @@ void ChunkManager::unload_chunks(int num_chunks) {
 
         glm::ivec2 last_chunk = loaded_chunks.back().get_chunk_coords();
 
-        loaded_chunks[chunk_index].clear();
         loaded_chunks[chunk_index] = std::move(loaded_chunks.back());
         loaded_chunks.pop_back();
 
         chunk_index_map.erase(chunk_pos);
         chunk_index_map.at(last_chunk) = chunk_index;
+
+        chunk_gpu_handler.deallocate_chunk(chunk_pos);
     }
 }
 
@@ -189,6 +187,9 @@ void ChunkManager::mesh_chunks(int num_chunks, TextureManager& texture_manager) 
 
         Chunk& chunk = loaded_chunks[chunk_index_map.at(chunk_pos)];
         chunk.convert_to_mesh(texture_manager, loaded_chunks, chunk_index_map);
+
+        chunk_gpu_handler.allocate_chunk(chunk_pos);
+        chunk_gpu_handler.send_mesh_to_gpu(chunk_pos, chunk.get_vertices());
     }
 }
 
@@ -204,11 +205,18 @@ void ChunkManager::mesh_all_chunks(TextureManager& texture_manager) {
 
         Chunk& chunk = loaded_chunks[chunk_index_map.at(chunk_pos)];
         chunk.convert_to_mesh(texture_manager, loaded_chunks, chunk_index_map);
+
+        chunk_gpu_handler.allocate_chunk(chunk_pos);
+        chunk_gpu_handler.send_mesh_to_gpu(chunk_pos, chunk.get_vertices());
     }
 }
 
 std::vector<Chunk>& ChunkManager::get_chunks() {
     return loaded_chunks;
+}
+
+GLuint ChunkManager::get_chunk_VAO(glm::ivec2 chunk_coords) const {
+    return chunk_gpu_handler.get_chunk_VAO(chunk_coords);
 }
 
 // Based on the Amanatides & Woo ray marching algorithm http://www.cse.yorku.ca/~amana/research/grid.pdf

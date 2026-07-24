@@ -1,6 +1,9 @@
 #pragma once
 
 #include "blocks/chunk.hpp"
+#include "blocks/chunk_gpu_handler.hpp"
+#include "blocks/common.hpp"
+#include "utils/logger.hpp"
 
 #include <queue>
 #include <unordered_map>
@@ -18,6 +21,7 @@ public:
     void mesh_chunks(int num_chunks, TextureManager& texture_manager);
     void mesh_all_chunks(TextureManager& texture_manager);
     std::vector<Chunk>& get_chunks();
+    GLuint get_chunk_VAO(glm::ivec2 chunk_coords) const;
 
     // Set get_adjacent to true to get the adjacent block on the face of the hit block: used for placing blocks
     std::optional<glm::vec3> cast_ray(glm::vec3 position, glm::vec3 direction, bool get_adjacent);
@@ -39,4 +43,6 @@ private:
     std::queue<glm::ivec2> mesh_chunk_queue{};
 
     std::queue<Event> events{};
+
+    ChunkGPUHandler chunk_gpu_handler{};
 };
