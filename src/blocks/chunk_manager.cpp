@@ -1,5 +1,11 @@
 #include "blocks/chunk_manager.hpp"
 
+#include "utils/logger.hpp"
+
+#include <cstddef>
+#include <cstring>
+#include <vector>
+
 ChunkManager::ChunkManager(int seed, int chunk_radius) : seed(seed), chunk_radius(chunk_radius) {}
 
 // Given the current player position, determine which chunks to load/unload
@@ -23,13 +29,13 @@ void ChunkManager::update(glm::vec3 player_pos) {
             if (dist > chunk_radius) {
                 continue;
             }
-            // skip loading if chunk already loaded/in load queue
-            if (chunk_index_map.contains(current_chunk) || load_chunk_queue_set.contains(current_chunk)) {
+            // skip loading if chunk already loaded/in request queue
+            if (chunk_index_map.contains(current_chunk) || request_chunk_queue_set.contains(current_chunk)) {
                 continue;
             }
 
-            load_chunk_queue.push(current_chunk);
-            load_chunk_queue_set.insert(current_chunk);
+            request_chunk_queue.push(current_chunk);
+            request_chunk_queue_set.insert(current_chunk);
         }
     }
 
@@ -88,52 +94,82 @@ void ChunkManager::update(glm::vec3 player_pos) {
     }
 }
 
+// Send all chunk requests to the server
+void ChunkManager::request_all_chunks(ClientInterface& client) {
+    while (!request_chunk_queue.empty()) {
+        glm::ivec2 chunk_pos = request_chunk_queue.front();
+        request_chunk_queue.pop();
+
+        ChunkRequest chunk_request{ chunk_pos, seed };
+        client.send(chunk_request.serialize());
+    }
+};
+
+// Deserialize chunk data received from the server and queue chunk data to be loaded
+void ChunkManager::receive_chunk_data(Packet packet) {
+    ChunkData chunk_data = ChunkData::deserialize(packet);
+    received_chunk_queue.push(std::move(chunk_data));
+}
+
 // Generates num_chunks Chunk objects and load their blocks
 void ChunkManager::load_chunks(int num_chunks) {
     for (int i = 0; i < num_chunks; i++) {
-        if (load_chunk_queue.empty()) {
+        if (received_chunk_queue.empty()) {
             break;
         }
 
-        glm::ivec2 chunk_pos = load_chunk_queue.front();
-        log_debug("Loading chunk %d, %d", chunk_pos.x, chunk_pos.y);
-        load_chunk_queue.pop();
-        load_chunk_queue_set.erase(chunk_pos);
+        ChunkData chunk_data = received_chunk_queue.front();
+        received_chunk_queue.pop();
+        glm::ivec2 chunk_pos = chunk_data.chunk_coords;
 
-        Chunk current_chunk(chunk_pos, seed);
-        current_chunk.generate_blocks_from_seed();
+        // generate Chunk object from ChunkData
+        Chunk current_chunk(chunk_data.chunk_coords, chunk_data.seed);
+        current_chunk.set_blocks(std::move(chunk_data.blocks));
 
+        // add to loaded chunks list and finally remove from request_chunk_queue_set since we have processed the chuck
         size_t current_index = loaded_chunks.size();
         loaded_chunks.push_back(std::move(current_chunk));
         chunk_index_map.insert({chunk_pos, current_index});
+        request_chunk_queue_set.erase(chunk_pos);
 
         mesh_chunk_queue.push(chunk_pos + glm::ivec2(-1, 0));
         mesh_chunk_queue.push(chunk_pos + glm::ivec2(1, 0));
         mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, -1));
         mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, 1));
         mesh_chunk_queue.push(chunk_pos);
+
+        // allocate GPU buffers first since we may attempt to draw these chunks before they are meshed and sent to the GPU.
+        // thus, we will only draw nothing and not a non-existent VAO
+        chunk_gpu_handler.allocate_chunk(chunk_pos);
     }
 }
 
 // Generates Chunk objects for all chunks in queue and loads their blocks
 void ChunkManager::load_all_chunks() {
-    while (!load_chunk_queue.empty()) {
-        glm::ivec2 chunk_pos = load_chunk_queue.front();
-        load_chunk_queue.pop();
-        load_chunk_queue_set.erase(chunk_pos);
+    while (!received_chunk_queue.empty()) {
+        ChunkData chunk_data = received_chunk_queue.front();
+        received_chunk_queue.pop();
+        glm::ivec2 chunk_pos = chunk_data.chunk_coords;
 
-        Chunk current_chunk(chunk_pos, seed);
-        current_chunk.generate_blocks_from_seed();
+        // generate Chunk object from ChunkData
+        Chunk current_chunk(chunk_data.chunk_coords, chunk_data.seed);
+        current_chunk.set_blocks(std::move(chunk_data.blocks));
 
+        // add to loaded chunks list and finally remove from request_chunk_queue_set since we have processed the chuck
         size_t current_index = loaded_chunks.size();
         loaded_chunks.push_back(std::move(current_chunk));
         chunk_index_map.insert({chunk_pos, current_index});
+        request_chunk_queue_set.erase(chunk_pos);
 
         mesh_chunk_queue.push(chunk_pos + glm::ivec2(-1, 0));
         mesh_chunk_queue.push(chunk_pos + glm::ivec2(1, 0));
         mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, -1));
         mesh_chunk_queue.push(chunk_pos + glm::ivec2(0, 1));
         mesh_chunk_queue.push(chunk_pos);
+
+        // allocate GPU buffers first since we may attempt to draw these chunks before they are meshed and sent to the GPU.
+        // thus, we will only draw nothing and not a non-existent VAO
+        chunk_gpu_handler.allocate_chunk(chunk_pos);
     }
 }
 
@@ -178,7 +214,6 @@ void ChunkManager::mesh_chunks(int num_chunks, TextureManager& texture_manager) 
         }
 
         glm::ivec2 chunk_pos = mesh_chunk_queue.front();
-        log_debug("Meshing chunk %d, %d", chunk_pos.x, chunk_pos.y);
         mesh_chunk_queue.pop();
 
         if (!chunk_index_map.contains(chunk_pos)) {
@@ -188,7 +223,6 @@ void ChunkManager::mesh_chunks(int num_chunks, TextureManager& texture_manager) 
         Chunk& chunk = loaded_chunks[chunk_index_map.at(chunk_pos)];
         chunk.convert_to_mesh(texture_manager, loaded_chunks, chunk_index_map);
 
-        chunk_gpu_handler.allocate_chunk(chunk_pos);
         chunk_gpu_handler.send_mesh_to_gpu(chunk_pos, chunk.get_vertices());
     }
 }
@@ -206,7 +240,6 @@ void ChunkManager::mesh_all_chunks(TextureManager& texture_manager) {
         Chunk& chunk = loaded_chunks[chunk_index_map.at(chunk_pos)];
         chunk.convert_to_mesh(texture_manager, loaded_chunks, chunk_index_map);
 
-        chunk_gpu_handler.allocate_chunk(chunk_pos);
         chunk_gpu_handler.send_mesh_to_gpu(chunk_pos, chunk.get_vertices());
     }
 }

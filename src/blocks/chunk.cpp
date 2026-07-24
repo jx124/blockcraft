@@ -2,7 +2,7 @@
 
 #include "blocks/common.hpp"
 #include "glm/gtc/noise.hpp"
-#include "logger.hpp"
+#include "utils/logger.hpp"
 #include <array>
 
 bool Block::is_transparent(Block block) {
@@ -389,6 +389,14 @@ glm::ivec2 Chunk::get_chunk_coords() const {
 
 const std::vector<uint32_t>& Chunk::get_vertices() const {
     return mesh.vertices;
+}
+
+void Chunk::set_blocks(std::vector<Block> blocks) {
+    this->blocks = std::move(blocks);
+}
+
+std::vector<Block> Chunk::get_blocks() const {
+    return this->blocks;
 }
 
 void Chunk::add_block(glm::vec3 world_pos, Block block) {

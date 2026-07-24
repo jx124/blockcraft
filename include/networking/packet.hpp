@@ -1,26 +1,27 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
 enum class PacketType : uint16_t {
     Ping = 1,
     Pong,
-    PlayerMove,
-    ChatMsg,
+    ChunkRequest,
+    ChunkData,
 };
 
 struct PacketHeader {
     PacketType type{}; // 2 bytes: packet type
-    uint16_t length{}; // 2 bytes: length of payload (excluding header)
+    uint32_t length{}; // 4 bytes: length of payload (excluding header)
 };
 
 struct Packet {
     PacketHeader header{};
-    std::vector<uint8_t> payload{};
+    std::vector<std::byte> payload{};
 
     // Convert packet into a flat buffer
-    std::vector<uint8_t> serialize() const;
-    static Packet make(PacketType type, std::vector<uint8_t> payload);
+    std::vector<std::byte> serialize() const;
+    static Packet make(PacketType type, std::vector<std::byte> payload);
 };
 

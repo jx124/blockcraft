@@ -1,8 +1,6 @@
 #pragma once
 
 #include "graphics/common.hpp"
-#include "blocks/chunk.hpp"
-#include "utils/logger.hpp"
 
 #include <cstdint>
 #include <unordered_map>

@@ -6,15 +6,19 @@ This is my attempt at making a multiplayer Minecraft clone to learn more about c
 ## Quick Start
 On Linux:
 - Install GLFW dependencies for your system: https://www.glfw.org/docs/latest/compile.html#compile_deps_wayland
-- Install CMake and Jinja2 build system.
+- Install CMake and the Jinja2 build system.
 - Run `chmod +x ./build.sh` to add execution permissions to the build script.
 - Run `./build.sh -r` to build the game in release mode (use `-d` instead for debug mode).
-- Run the executable in the directory `./build/release/` (or `./build/debug`).
+- In the directory `./build/release/` (or `./build/debug`):
+    - Run `blockcraft_server <port>` to start a server. The default port number is `50000`.
+    - Run `blockcraft <hostname> <port>` to start the client. The default address is `localhost:50000`.
 
 Manually using CMake:
 - Run `cmake -B build/release -DCMAKE_BUILD_TYPE=release` to set the build binary directory.
 - Run `cmake --build ./build/release -j $(nproc)` to build the executable. Replace `$(nproc)` with the number of cores desired for the build if needed.
-- Run the executable in the directory `./build/release/`.
+- In the directory `./build/release/`:
+    - Run `blockcraft_server <port>` to start a server. The default port number is `50000`.
+    - Run `blockcraft <hostname> <port>` to start the client. The default address is `localhost:50000`.
 Replace `release` with `debug` for the debug build.
 
 ## Features
@@ -23,6 +27,7 @@ Replace `release` with `debug` for the debug build.
 - Chunking and meshing system: The world is composed of chunks of size 16 x 16 x 256 blocks, with face culling between blocks that are not visible to improve performance. Voxel vertex data is also packed into a single `uint32_t`, reducing data to be sent to the GPU by 7x, improving throughput and performance.
 - Entity Component System (ECS) based on archetypes combined with an event system. This allows for easier code organization and development due to lower coupling, and also improves performance since the ECS stores data in a cache-friendly format.
 - Lighting system implements cascaded shadow maps to render shadows at higher resolution when near the camera, and at lower resolution when far away, saving memory without sacrificing too much on quality. Voxel ambient occlusion is also implemented to improve realism.
+- Client-server architecture implemented with Boost.Asio and C++ coroutines for multiplayer gameplay (work in progress).
 
 ## Acknowledgements
 - The Entity Component System (ECS) code mainly follows this tutorial by Alex Jobe: https://www.alexjobe.net/posts/ecs with some modifications. Namely, I changed the `shared_ptr`s to `unique_ptr`s since the lifetime of the resources are taken care of by the ECS. I also used fold expressions to allow registering multiple Components to one System at compile time.

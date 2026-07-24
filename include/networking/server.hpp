@@ -1,3 +1,5 @@
+#pragma once
+
 #include "asio.hpp"
 #include "networking/session.hpp"
 #include "networking/packet.hpp"

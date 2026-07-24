@@ -57,7 +57,7 @@ asio::awaitable<void> Session::read_loop() {
             break;
         }
 
-        std::vector<uint8_t> payload((int)header.length);
+        std::vector<std::byte> payload((int)header.length);
         if (header.length > 0) {
             std::tie(ec, length) = co_await asio::async_read(socket,
                                                              asio::buffer(payload),

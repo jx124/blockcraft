@@ -2,8 +2,8 @@
 
 #include "blocks/chunk.hpp"
 #include "blocks/chunk_gpu_handler.hpp"
-#include "blocks/common.hpp"
-#include "utils/logger.hpp"
+#include "networking/client.hpp"
+#include "networking/packet.hpp"
 
 #include <queue>
 #include <unordered_map>
@@ -15,11 +15,17 @@ public:
 
     // Given the current player position, determine which chunks to load/unload
     void update(glm::vec3 player_pos);
+
+    void request_all_chunks(ClientInterface& client);
+    void receive_chunk_data(Packet packet);
+
     void load_chunks(int num_chunks);
     void load_all_chunks();
     void unload_chunks(int num_chunks);
+
     void mesh_chunks(int num_chunks, TextureManager& texture_manager);
     void mesh_all_chunks(TextureManager& texture_manager);
+
     std::vector<Chunk>& get_chunks();
     GLuint get_chunk_VAO(glm::ivec2 chunk_coords) const;
 
@@ -35,10 +41,11 @@ private:
     std::vector<Chunk> loaded_chunks{};
     std::unordered_map<glm::ivec2, size_t> chunk_index_map{};
 
-    std::unordered_set<glm::ivec2> load_chunk_queue_set{};
+    std::unordered_set<glm::ivec2> request_chunk_queue_set{};
     std::unordered_set<glm::ivec2> unload_chunk_queue_set{};
 
-    std::queue<glm::ivec2> load_chunk_queue{};
+    std::queue<glm::ivec2> request_chunk_queue{};
+    std::queue<ChunkData> received_chunk_queue{};
     std::queue<glm::ivec2> unload_chunk_queue{};
     std::queue<glm::ivec2> mesh_chunk_queue{};
 

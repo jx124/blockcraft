@@ -1,7 +1,7 @@
+#include "blocks/chunk.hpp"
 #include "networking/server.hpp"
 
 #include <iostream>
-#include <thread>
 
 int main(int argc, char** argv) {
     if (argc != 1 && argc != 2) {
@@ -30,9 +30,24 @@ int main(int argc, char** argv) {
             server.send_to(session, Packet::make(PacketType::Pong, {}));
     });
 
+    server.register_packet_handler(PacketType::ChunkRequest,
+        [&server](std::shared_ptr<Session> session, Packet packet){
+            ChunkRequest chunk_request = ChunkRequest::deserialize(std::move(packet));
+
+            Chunk chunk(chunk_request.chunk_coords, chunk_request.seed);
+            chunk.generate_blocks_from_seed();
+
+            ChunkData chunk_data{
+                chunk_request.chunk_coords,
+                chunk_request.seed,
+                chunk.get_blocks(),
+            };
+
+            server.send_to(session, chunk_data.serialize());
+    });
+
     using namespace std::chrono_literals;
     while (true) {
         server.poll();
-        std::this_thread::sleep_for(100ms);
     }
 }

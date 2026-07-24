@@ -4,6 +4,7 @@
 #include "graphics/common.hpp"
 #include "graphics/texture_manager.hpp"
 
+#include <cstddef>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -79,6 +80,8 @@ public:
     size_t get_num_vertices() const;
     glm::ivec2 get_chunk_coords() const;
     const std::vector<uint32_t>& get_vertices() const;
+    void set_blocks(std::vector<Block> blocks);
+    std::vector<Block> get_blocks() const;
 
     void add_block(glm::vec3 world_pos, Block block);
     void delete_block(glm::vec3 world_pos);
@@ -95,3 +98,56 @@ private:
     std::vector<VoxelQuad> quads{};
     Mesh mesh{};
 };
+
+// Networking structs
+
+struct ChunkRequest {
+    glm::ivec2 chunk_coords{};
+    int seed{};
+
+    Packet serialize() {
+        std::vector<std::byte> payload(sizeof(chunk_coords) + sizeof(seed));
+        std::memcpy(payload.data(), glm::value_ptr(chunk_coords), sizeof(chunk_coords));
+        std::memcpy(payload.data() + sizeof(chunk_coords), &seed, sizeof(seed));
+
+        return Packet::make(PacketType::ChunkRequest, std::move(payload));
+    }
+
+    static ChunkRequest deserialize(Packet packet) {
+        ChunkRequest chunk_request{};
+
+        std::memcpy(glm::value_ptr(chunk_request.chunk_coords), packet.payload.data(), sizeof(chunk_coords));
+        std::memcpy(&chunk_request.seed, packet.payload.data() + sizeof(chunk_coords), sizeof(seed));
+        return chunk_request;
+    }
+};
+
+struct ChunkData {
+    glm::ivec2 chunk_coords{};
+    int seed{};
+    std::vector<Block> blocks{};
+
+    Packet serialize() {
+        uint32_t payload_size = sizeof(chunk_coords) + sizeof(seed) + sizeof(Block) * blocks.size();
+
+        std::vector<std::byte> payload(payload_size);
+        std::memcpy(payload.data(), glm::value_ptr(chunk_coords), sizeof(chunk_coords));
+        std::memcpy(payload.data() + sizeof(chunk_coords), &seed, sizeof(seed));
+        std::memcpy(payload.data() + sizeof(chunk_coords) + sizeof(seed), blocks.data(), sizeof(Block) * blocks.size());
+
+        return Packet::make(PacketType::ChunkData, std::move(payload));
+    }
+
+    static ChunkData deserialize(Packet packet) {
+        uint32_t blocks_size = (packet.header.length - sizeof(chunk_coords) - sizeof(seed)) / sizeof(Block);
+        ChunkData chunk_data{};
+        chunk_data.blocks.resize(blocks_size);
+
+        std::memcpy(glm::value_ptr(chunk_data.chunk_coords), packet.payload.data(), sizeof(chunk_coords));
+        std::memcpy(&chunk_data.seed, packet.payload.data() + sizeof(chunk_coords), sizeof(seed));
+        std::memcpy(chunk_data.blocks.data(), packet.payload.data() + sizeof(chunk_coords) + sizeof(seed), blocks_size * sizeof(Block));
+
+        return chunk_data;
+    }
+};
+

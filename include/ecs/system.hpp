@@ -5,6 +5,7 @@
 #include "events/event.hpp"
 
 #include <unordered_set>
+#include <queue>
 #include <vector>
 
 // Simple container for all the archetypes that match the system archetype or are a superset of it.

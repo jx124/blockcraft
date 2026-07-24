@@ -1,4 +1,6 @@
 #include "blocks/chunk_gpu_handler.hpp"
+#include "blocks/chunk.hpp"
+#include "utils/logger.hpp"
 
 void ChunkGPUHandler::allocate_chunk(glm::ivec2 chunk_coords) {
     if (chunk_buffers_map.contains(chunk_coords)) {
@@ -33,6 +35,7 @@ void ChunkGPUHandler::deallocate_chunk(glm::ivec2 chunk_coords) {
 
 void ChunkGPUHandler::send_mesh_to_gpu(glm::ivec2 chunk_coords, const std::vector<uint32_t>& vertices) {
     if (!chunk_buffers_map.contains(chunk_coords)) {
+        allocate_chunk(chunk_coords);
         return;
     }
     Buffers buffers = chunk_buffers_map.at(chunk_coords);
