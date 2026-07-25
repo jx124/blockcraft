@@ -87,11 +87,10 @@ void ClientApplication::run() {
     camera_system->register_primary_camera();
 
     // Crosshair
-    float aspect = (float)this->width / this->height;
     float size = 0.03f;
     float crosshair[8] = {
-        -size / aspect,  0.0f,
-        size / aspect,  0.0f,
+        -size,  0.0f,
+        size,  0.0f,
         0.0f,  -size,
         0.0f,  size,
     };
@@ -177,6 +176,8 @@ void ClientApplication::run() {
 
         glBindVertexArray(this->HUD_VAO);
         glUseProgram(hud_shader);
+        float aspect_ratio = static_cast<float>(this->width) / this->height;
+        Shader::set_uniform(hud_shader, "aspectRatio", aspect_ratio);
         glLineWidth(3.0f);
         glDrawArrays(GL_LINES, 0, 4);
 
@@ -264,6 +265,7 @@ void ClientApplication::framebuffer_size_callback(GLFWwindow* window, int width,
     app_ptr->height = height;
     app_ptr->window->width = width;
     app_ptr->window->height= height;
+    app_ptr->camera_system->resize_primary_camera(width, height);
 
     glViewport(0, 0, width, height);
 }

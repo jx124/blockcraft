@@ -87,7 +87,6 @@ public:
     void delete_block(glm::vec3 world_pos);
 
 private:
-    // TODO: check neighboring blocks for face culling and set block type depending on face
     void convert_to_quads(const std::vector<Chunk>& loaded_chunks,
                           const std::unordered_map<glm::ivec2, size_t>& chunk_index_map);
     void generate_vertex_data(const VoxelQuad& quad, const TextureManager& texture_manager);

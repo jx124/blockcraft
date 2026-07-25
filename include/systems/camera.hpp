@@ -65,6 +65,19 @@ public:
         return *position;
     }
 
+    void resize_primary_camera(int width, int height) {
+        for (Archetype* archetype : archetypes) {
+            std::vector<Camera>& cameras = archetype->get_component_vector<Camera>();
+
+            for (size_t i = 0; i < archetype->size(); i++) {
+                if (!cameras[i].is_primary_camera) {
+                    continue;
+                }
+                cameras[i].aspect_ratio = static_cast<float>(width) / height;
+            }
+        }
+    }
+
 private:
     Camera* primary_camera{};
     glm::vec3* position{};
