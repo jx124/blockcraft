@@ -1,19 +1,19 @@
 #pragma once
 
 #include "blocks/chunk_manager.hpp"
+#include "systems/camera.hpp"
 #include "systems/datatypes.hpp"
 #include "ecs/system.hpp"
 
 class ActionSystem : public System {
 public:
-    void update(ChunkManager& chunk_manager) {
+    void update(ChunkManager& chunk_manager, CameraSystem& camera_system) {
         for (Archetype* archetype : archetypes) {
-            std::vector<Transform>& transforms = archetype->get_component_vector<Transform>();
             std::vector<PlayerAction>& actions = archetype->get_component_vector<PlayerAction>();
 
             for (size_t i = 0; i < archetype->size(); i++) {
-                glm::vec3& position = transforms[i].position;
-                glm::vec3& front = transforms[i].direction;
+                glm::vec3 position = camera_system.camera_position();
+                glm::vec3 front = camera_system.camera_direction();
                 PlayerAction& action = actions[i];
 
                 update_action(action);

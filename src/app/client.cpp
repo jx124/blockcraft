@@ -69,12 +69,13 @@ void ClientApplication::run() {
     ActionSystem* action_system = ECS.register_system<ActionSystem>();
 
     ECS.add_components_to_system<PhysicsSystem, Transform, Velocity>();
-    ECS.add_components_to_system<MovementSystem, Transform, Velocity, PlayerMovement>();
-    ECS.add_components_to_system<ActionSystem, Transform, PlayerAction>();
+    ECS.add_components_to_system<MovementSystem, Transform, Velocity, PlayerMovement, AABB>();
+    ECS.add_components_to_system<ActionSystem, PlayerAction>();
 
     EntityID player = ECS.create_entity().value();
-    ECS.add_component_to_entity(player, Transform{{8.0f, 8.0f, 160.0f}, {}});
+    ECS.add_component_to_entity(player, Transform{{8.0f, 8.0f, 0.0f}, {}});
     ECS.add_component_to_entity(player, Velocity{});
+    ECS.add_component_to_entity(player, AABB{ {-0.3f, -0.3f, 0.0f}, {0.3f, 0.3f, 1.8f} });
     ECS.add_component_to_entity(player, PlayerMovement{});
     ECS.add_component_to_entity(player, PlayerAction{});
     ECS.add_component_to_entity(player, Camera{});
@@ -132,10 +133,28 @@ void ClientApplication::run() {
         client.poll();
     }
 
-    chunk_manager.update({8.0f, 8.0f, 160.0f});
+    chunk_manager.update({8.0f, 8.0f, 0.0f});
     chunk_manager.request_all_chunks(client);
     chunk_manager.load_all_chunks();
     chunk_manager.mesh_all_chunks(texture_manager);
+
+    // wait for starting chunk to arrive
+    while (!chunk_manager.is_chunk_loaded({0, 0})) {
+        client.poll();
+        chunk_manager.load_chunks(1);
+        chunk_manager.mesh_chunks(5, texture_manager);
+    }
+
+    float surface_height{};
+    for (int z = 0; z < CHUNK_HEIGHT; z++) {
+        if (chunk_manager.is_block_solid({8, 8, z})) {
+            continue;
+        }
+        surface_height = static_cast<float>(z);
+        break;
+    }
+
+    ECS.get_component<Transform>(player).position.z = surface_height;
 
     while (!should_close) {
         glfwPollEvents();
@@ -144,7 +163,7 @@ void ClientApplication::run() {
         this->update();
 
         movement_system->update(dt, chunk_manager);
-        physics_system->update(dt);
+        physics_system->update();
 
         chunk_manager.request_all_chunks(client);
         chunk_manager.load_chunks(1);
@@ -152,7 +171,7 @@ void ClientApplication::run() {
         chunk_manager.mesh_chunks(5, texture_manager);
 
         if (frame_time >= 1.0f / BLOCKS_PER_SECOND) {
-            action_system->update(chunk_manager);
+            action_system->update(chunk_manager, *camera_system);
             frame_time -= (1.0f / BLOCKS_PER_SECOND);
         }
 

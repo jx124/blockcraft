@@ -28,6 +28,8 @@ public:
 
     std::vector<Chunk>& get_chunks();
     GLuint get_chunk_VAO(glm::ivec2 chunk_coords) const;
+    bool is_block_solid(glm::ivec3 block_coords) const;
+    bool is_chunk_loaded(glm::ivec2 chunk_coords) const;
 
     // Set get_adjacent to true to get the adjacent block on the face of the hit block: used for placing blocks
     std::optional<glm::vec3> cast_ray(glm::vec3 position, glm::vec3 direction, bool get_adjacent);

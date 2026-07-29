@@ -62,7 +62,13 @@ public:
     glm::vec3 camera_position() const {
         debug_assert(primary_camera && position && direction, "Did not register primary camera for camera position");
 
-        return *position;
+        return *position + primary_camera->offset;
+    }
+
+    glm::vec3 camera_direction() const {
+        debug_assert(primary_camera && direction, "Did not register primary camera for camera direction");
+
+        return *direction;
     }
 
     void resize_primary_camera(int width, int height) {

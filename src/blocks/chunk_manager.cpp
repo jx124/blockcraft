@@ -252,6 +252,18 @@ GLuint ChunkManager::get_chunk_VAO(glm::ivec2 chunk_coords) const {
     return chunk_gpu_handler.get_chunk_VAO(chunk_coords);
 }
 
+bool ChunkManager::is_block_solid(glm::ivec3 block_coords) const {
+    std::optional<Block> block = Chunk::get_block_from_world_pos(block_coords, loaded_chunks, chunk_index_map);
+    if (!block || block->type == Block::Type::AIR) {
+        return false;
+    }
+    return true;
+}
+
+bool ChunkManager::is_chunk_loaded(glm::ivec2 chunk_coords) const {
+    return chunk_index_map.contains(chunk_coords);
+}
+
 // Based on the Amanatides & Woo ray marching algorithm http://www.cse.yorku.ca/~amana/research/grid.pdf
 // Set get_adjacent to true to get the adjacent block on the face of the hit block; useful for placing blocks
 std::optional<glm::vec3> ChunkManager::cast_ray(glm::vec3 position, glm::vec3 direction, bool get_adjacent) {
